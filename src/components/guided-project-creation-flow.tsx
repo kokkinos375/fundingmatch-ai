@@ -10,6 +10,10 @@ import {
   type FundingType,
   type ProjectStage,
 } from "@/lib/schemas";
+import {
+  projectProfileExtractionSchema,
+  type ProjectProfileExtraction,
+} from "@/lib/project-profile-extraction-schema";
 
 type ProjectFormState = {
   errors: string[];
@@ -24,23 +28,37 @@ type GuidedProjectDraft = {
   name: string;
   country: string;
   ideaDescription: string;
+  shortDescription: string;
   targetUsers: string;
   technologies: string;
   sectors: string[];
   customSectors: string;
   stage: ProjectStage;
+  problemSolved: string;
+  solution: string;
+  keywords: string;
   preferredFundingTypes: FundingType[];
 };
+
+type ExtractState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
 
 const initialDraft: GuidedProjectDraft = {
   name: "",
   country: "",
   ideaDescription: "",
+  shortDescription: "",
   targetUsers: "",
   technologies: "",
   sectors: [],
   customSectors: "",
   stage: "prototype",
+  problemSolved: "",
+  solution: "",
+  keywords: "",
   preferredFundingTypes: ["grant", "pilot", "accelerator"],
 };
 
@@ -79,6 +97,9 @@ export function GuidedProjectCreationFlow({
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<GuidedProjectDraft>(initialDraft);
+  const [extractState, setExtractState] = useState<ExtractState>({
+    status: "idle",
+  });
   const [state, formAction, isPending] = useActionState(action, { errors: [] });
   const currentStep = steps[stepIndex];
   const canContinue = getCanContinue(currentStep, draft);
@@ -147,7 +168,12 @@ export function GuidedProjectCreationFlow({
 
         <div className="min-h-[430px]">
           {currentStep === "Idea" ? (
-            <IdeaStep draft={draft} setDraft={setDraft} />
+            <IdeaStep
+              draft={draft}
+              extractState={extractState}
+              onExtract={requestAiSuggestion}
+              setDraft={setDraft}
+            />
           ) : null}
           {currentStep === "Sector" ? (
             <SectorStep draft={draft} setDraft={setDraft} />
@@ -163,6 +189,7 @@ export function GuidedProjectCreationFlow({
               <ConfirmationStep
                 draft={draft}
                 generatedProfile={generatedProfile}
+                setDraft={setDraft}
               />
               <HiddenProjectFields generatedProfile={generatedProfile} />
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
@@ -210,13 +237,73 @@ export function GuidedProjectCreationFlow({
       </section>
     </div>
   );
+
+  async function requestAiSuggestion() {
+    const idea = draft.ideaDescription.trim();
+
+    if (idea.length < 10) {
+      setExtractState({
+        status: "error",
+        message:
+          "Paste at least a short project idea before requesting suggestions.",
+      });
+      return;
+    }
+
+    setExtractState({ status: "loading" });
+
+    try {
+      const response = await fetch("/api/projects/extract-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idea }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(getExtractorErrorMessage(payload));
+      }
+
+      const suggestion = projectProfileExtractionSchema.safeParse(
+        isRecord(payload) ? payload.suggestion : undefined,
+      );
+
+      if (!suggestion.success) {
+        throw new Error(
+          "AI returned suggestions in an unexpected format. Continue manually.",
+        );
+      }
+
+      setDraft(applySuggestionToDraft(draft, suggestion.data));
+      setStepIndex(steps.length - 1);
+      setExtractState({
+        status: "success",
+        message:
+          "AI suggestions were added. Review and edit the profile before saving.",
+      });
+    } catch (error) {
+      setExtractState({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "AI suggestions are unavailable right now. Continue manually.",
+      });
+    }
+  }
 }
 
 function IdeaStep({
   draft,
+  extractState,
+  onExtract,
   setDraft,
 }: {
   draft: GuidedProjectDraft;
+  extractState: ExtractState;
+  onExtract: () => void;
   setDraft: (draft: GuidedProjectDraft) => void;
 }) {
   return (
@@ -262,6 +349,37 @@ function IdeaStep({
           <span className={helpClass}>
             Two or three sentences are enough for the first scan.
           </span>
+          <div className="mt-3 flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs leading-5 text-slate-600">
+              Paste your rough idea, then ask AI to suggest a structured
+              profile you can review and edit.
+            </div>
+            <button
+              type="button"
+              onClick={onExtract}
+              disabled={
+                extractState.status === "loading" ||
+                draft.ideaDescription.trim().length < 10
+              }
+              className="primary-action inline-flex shrink-0 justify-center rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {extractState.status === "loading"
+                ? "Suggesting..."
+                : "Suggest with AI"}
+            </button>
+          </div>
+          {extractState.status === "success" ||
+          extractState.status === "error" ? (
+            <p
+              className={`mt-2 text-xs leading-5 ${
+                extractState.status === "success"
+                  ? "text-emerald-700"
+                  : "text-red-700"
+              }`}
+            >
+              {extractState.message}
+            </p>
+          ) : null}
         </label>
         <label className={labelClass}>
           Target users
@@ -438,15 +556,17 @@ function FundingStep({
 function ConfirmationStep({
   draft,
   generatedProfile,
+  setDraft,
 }: {
   draft: GuidedProjectDraft;
   generatedProfile: ReturnType<typeof buildProfileFields>;
+  setDraft: (draft: GuidedProjectDraft) => void;
 }) {
   return (
     <div>
       <StepHeading
         title="Confirm before saving"
-        description="Review the profile summary. You can edit the advanced details after saving."
+        description="Review and edit these suggestions. Use the steps on the left to adjust sector, stage, or funding preferences."
       />
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <SummaryItem label="Name" value={generatedProfile.name} />
@@ -472,6 +592,33 @@ function ConfirmationStep({
             value={draft.ideaDescription.trim()}
           />
         </div>
+      </div>
+      <div className="mt-6 grid gap-5">
+        <EditableField
+          label="Short description"
+          value={generatedProfile.shortDescription}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, shortDescription: value })}
+        />
+        <EditableField
+          label="Problem solved"
+          value={generatedProfile.problemSolved}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, problemSolved: value })}
+        />
+        <EditableField
+          label="Solution"
+          value={generatedProfile.solution}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, solution: value })}
+        />
+        <EditableField
+          label="Keywords"
+          value={generatedProfile.keywords.join(", ")}
+          rows={2}
+          onChange={(value) => setDraft({ ...draft, keywords: value })}
+          help="Use commas or new lines."
+        />
       </div>
     </div>
   );
@@ -572,6 +719,33 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function EditableField({
+  label,
+  value,
+  rows,
+  help,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  rows: number;
+  help?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className={labelClass}>
+      {label}
+      <textarea
+        value={value}
+        rows={rows}
+        onChange={(event) => onChange(event.target.value)}
+        className={textInputClass}
+      />
+      {help ? <span className={helpClass}>{help}</span> : null}
+    </label>
+  );
+}
+
 function buildProfileFields(draft: GuidedProjectDraft) {
   const idea = draft.ideaDescription.trim();
   const sectors = uniqueValues([
@@ -583,23 +757,59 @@ function buildProfileFields(draft: GuidedProjectDraft) {
   const fallbackTechnologies =
     technologies.length > 0 ? technologies : ["not specified"];
   const targetUsers = draft.targetUsers.trim() || "General project stakeholders";
+  const shortDescription = draft.shortDescription.trim() || idea;
+  const problemSolved =
+    draft.problemSolved.trim() || `The project addresses this need: ${idea}`;
+  const solution =
+    draft.solution.trim() || `The proposed solution is described as: ${idea}`;
+  const keywords = parseList(draft.keywords);
 
   return {
     name: draft.name.trim(),
     country: draft.country.trim(),
-    shortDescription: idea,
+    shortDescription,
     sectors: fallbackSectors,
     technologies: fallbackTechnologies,
     targetUsers,
-    problemSolved: `The project addresses this need: ${idea}`,
-    solution: `The proposed solution is described as: ${idea}`,
+    problemSolved,
+    solution,
     stage: draft.stage,
     preferredFundingTypes: draft.preferredFundingTypes,
-    keywords: uniqueValues([
-      ...fallbackSectors,
-      ...fallbackTechnologies,
-      ...draft.preferredFundingTypes,
-    ]),
+    keywords:
+      keywords.length > 0
+        ? keywords
+        : uniqueValues([
+            ...fallbackSectors,
+            ...fallbackTechnologies,
+            ...draft.preferredFundingTypes,
+          ]),
+  };
+}
+
+function applySuggestionToDraft(
+  draft: GuidedProjectDraft,
+  suggestion: ProjectProfileExtraction,
+): GuidedProjectDraft {
+  const suggestedKnownSectors = suggestion.sectors.filter((sector) => {
+    return sectorOptions.includes(sector);
+  });
+  const suggestedCustomSectors = suggestion.sectors.filter((sector) => {
+    return !sectorOptions.includes(sector);
+  });
+
+  return {
+    ...draft,
+    name: suggestion.name,
+    shortDescription: suggestion.shortDescription,
+    sectors: suggestedKnownSectors,
+    customSectors: suggestedCustomSectors.join(", "),
+    technologies: suggestion.technologies.join(", "),
+    targetUsers: suggestion.targetUsers,
+    problemSolved: suggestion.problemSolved,
+    solution: suggestion.solution,
+    stage: suggestion.stage,
+    keywords: suggestion.keywords.join(", "),
+    preferredFundingTypes: suggestion.preferredFundingTypes,
   };
 }
 
@@ -612,6 +822,22 @@ function parseList(value: string) {
 
 function uniqueValues(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function getExtractorErrorMessage(payload: unknown) {
+  if (
+    isRecord(payload) &&
+    typeof payload.error === "string" &&
+    payload.error.trim().length > 0
+  ) {
+    return payload.error;
+  }
+
+  return "AI suggestions are unavailable right now. Continue manually.";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getCanContinue(
