@@ -2,7 +2,9 @@
 
 FundingMatch AI is a Next.js + TypeScript MVP for creating generic startup or project profiles and scanning them against source-based funding-call datasets.
 
-The app includes one example profile, NaviGuard, but the schema, form, scoring, and scan flow are generic.
+The app includes one generic public example profile, EcoSmart Demo, but the schema, form, scoring, and scan flow are generic.
+
+This MVP does not yet include authentication. Any public deployment should use generic demo data only, or add authentication before storing private startup ideas.
 
 ## Stack
 
@@ -72,7 +74,7 @@ src/data/projects.json
 src/data/manual-funding-calls.json
 ```
 
-`LocalJsonStorage` validates every read with Zod, skips invalid records safely, and logs development-only warnings. The NaviGuard example profile is stored in `src/data/projects.json`; `manual-funding-calls.json` stays empty until calls are added or imported.
+`LocalJsonStorage` validates every read with Zod, skips invalid records safely, and logs development-only warnings. The EcoSmart Demo example profile is stored in `src/data/projects.json`; `manual-funding-calls.json` stays empty until calls are added or imported.
 
 Local JSON storage is useful for MVP development, but it is not suitable for production persistence on serverless deployments. Serverless file systems can be read-only, ephemeral, or isolated per instance, so production storage should move to PostgreSQL/Supabase or another durable backend.
 
@@ -131,6 +133,7 @@ Current default mode uses both `MockFundingSource` and `ManualFundingSource`:
 Source flags:
 
 ```bash
+PUBLIC_DEMO_PROJECT_ID=ecosmart-demo
 ENABLE_MOCK_SOURCE=true
 ENABLE_MANUAL_SOURCE=true
 ENABLE_EU_PORTAL_SOURCE=false
@@ -181,6 +184,9 @@ Each imported item should contain these fields:
   }
 ]
 ```
+
+Use `url` for the official call/application URL. The scan results use `url`
+first, then `sourceUrl`, when displaying the "View official call" link.
 
 The app generates a local `id`, sets `sourceType` to `manual`, and stamps `retrievedAt` with the current ISO timestamp. Imported and hand-entered calls must still validate against `FundingCallSchema` before they are stored. Invalid import rows are rejected with visible validation errors; invalid rows already present in the JSON file are skipped and counted in diagnostics.
 
@@ -249,7 +255,7 @@ Development seed endpoint:
 POST /api/dev/seed
 ```
 
-In development mode, this seeds the NaviGuard example project only when it is missing. It does not duplicate records and does not create fake funding calls.
+In development mode, this seeds the configured public demo project only when it is missing. It does not duplicate records and does not create fake funding calls.
 
 Verification cleanup endpoint:
 
@@ -259,7 +265,7 @@ POST /api/dev/cleanup-verification-records
 
 In development mode, this removes only records whose IDs start with
 `supabase-verification-project` or `verify-supabase`. It does not delete
-NaviGuard and does not delete normal user-created projects or funding calls.
+normal user-created projects or funding calls.
 In production, this endpoint returns `403`.
 
 Export endpoint:
@@ -316,6 +322,7 @@ Required Vercel environment variables:
 
 ```bash
 OPENAI_API_KEY=
+PUBLIC_DEMO_PROJECT_ID=ecosmart-demo
 STORAGE_DRIVER=supabase
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -334,6 +341,8 @@ Deployment notes:
 - Do not prefix secrets with `NEXT_PUBLIC_`; those variables are exposed to the
   browser bundle.
 - Do not commit `.env.local` or any `.env.*.local` file.
+- Use only generic demo data on public deployments until authentication is
+  added.
 - Keep `ENABLE_EU_PORTAL_SOURCE=false` until the official EU Funding & Tenders
   Portal API contract is verified.
 - `/admin/tools` is not protected yet. Protect or disable it before public

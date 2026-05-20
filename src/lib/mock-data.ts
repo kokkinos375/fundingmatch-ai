@@ -8,38 +8,38 @@ const seedTimestamp = "2026-05-19T09:00:00.000Z";
 
 export const mockProjectProfiles: ProjectProfile[] = [
   {
-    id: "naviguard",
-    name: "NaviGuard",
+    id: "ecosmart-demo",
+    name: "EcoSmart Demo",
     shortDescription:
-      "AI-assisted monitoring and non-invasive deterrence for safer coastal operations around protected marine wildlife.",
-    country: "Greece",
-    sectors: ["maritime", "environment", "wildlife protection"],
-    technologies: [
-      "AI",
-      "computer vision",
-      "edge devices",
-      "acoustic sensing",
+      "A generic example project that uses AI and sensors to monitor environmental conditions and help organisations identify suitable sustainability funding opportunities.",
+    country: "Belgium",
+    sectors: [
+      "sustainability",
+      "environment",
+      "digital innovation",
+      "monitoring technology",
     ],
+    technologies: ["AI", "sensors", "data analytics"],
     targetUsers:
-      "Ports, coastal municipalities, aquaculture operators, and marine conservation teams.",
+      "Sustainability teams, public organisations, facility operators, and innovation managers.",
     problemSolved:
-      "Coastal operators need to reduce vessel and infrastructure risks while avoiding harm to protected marine species.",
+      "Organisations need accessible environmental monitoring data to plan sustainability projects and identify relevant funding routes.",
     solution:
-      "NaviGuard combines edge AI, camera feeds, and configurable alert workflows to detect sensitive wildlife zones and recommend safe operational responses.",
+      "EcoSmart Demo combines sensor readings, AI-assisted analysis, and simple reporting workflows to highlight environmental trends and funding-ready pilot opportunities.",
     stage: "prototype",
     trl: 5,
-    preferredFundingTypes: ["grant", "pilot", "accelerator"],
+    preferredFundingTypes: ["grant", "pilot", "voucher"],
     keywords: [
-      "marine safety",
-      "AI monitoring",
-      "protected species",
-      "coastal infrastructure",
+      "sustainability",
+      "environmental monitoring",
+      "AI sensors",
+      "digital innovation",
     ],
     avoid: ["defence-only calls", "pure equity"],
     scoringWeights: {
       ...defaultScoringWeights,
-      topicFit: 5,
-      strategicValue: 4,
+      topicFit: 4,
+      strategicValue: 3,
     },
     createdAt: seedTimestamp,
     updatedAt: seedTimestamp,

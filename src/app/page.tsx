@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Badge } from "@/components/badge";
+import { getPublicDemoProjectId, getPublicDemoProjectProfile } from "@/lib/public-demo";
 import { getStorage } from "@/lib/storage";
 
 export default async function HomePage() {
-  const projects = await getStorage().listProjects();
+  const demoProjectId = getPublicDemoProjectId();
+  const demoProject =
+    (await getStorage().getProject(demoProjectId)) ?? getPublicDemoProjectProfile();
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
@@ -45,25 +48,20 @@ export default async function HomePage() {
             <Badge tone="teal">MVP</Badge>
           </div>
           <div className="mt-5 space-y-4">
-            {projects.slice(0, 1).map((project) => {
-              return (
-                <div
-                  key={project.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="blue">Example profile</Badge>
-                    <Badge>{project.country}</Badge>
-                  </div>
-                  <h2 className="mt-3 text-xl font-semibold text-slate-950">
-                    {project.name}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {project.shortDescription}
-                  </p>
+            {demoProject ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="blue">Example profile</Badge>
+                  <Badge>{demoProject.country}</Badge>
                 </div>
-              );
-            })}
+                <h2 className="mt-3 text-xl font-semibold text-slate-950">
+                  {demoProject.name}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {demoProject.shortDescription}
+                </p>
+              </div>
+            ) : null}
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-[0.12em] text-slate-500">

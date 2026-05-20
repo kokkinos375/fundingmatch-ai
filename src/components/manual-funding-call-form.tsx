@@ -66,7 +66,7 @@ export function ManualFundingCallForm({
             defaultValue={defaults.budget}
           />
           <label className={`${labelClass} md:col-span-2`}>
-            URL
+            Official call/application URL
             <input
               name="url"
               type="url"
@@ -74,6 +74,9 @@ export function ManualFundingCallForm({
               defaultValue={defaults.url}
               className={textInputClass}
             />
+            <span className={helpClass}>
+              Paste the official programme/call page or application link.
+            </span>
           </label>
         </div>
       </section>

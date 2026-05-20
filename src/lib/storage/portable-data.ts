@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { mockProjectProfiles } from "@/lib/mock-data";
+import { getPublicDemoProjectProfile } from "@/lib/public-demo";
 import {
   fundingCallSchema,
   projectProfileSchema,
@@ -170,12 +170,10 @@ export async function importPortableAppData(
 
 export async function seedExampleProject() {
   const storage = getStorage();
-  const exampleProject = mockProjectProfiles.find(
-    (project) => project.id === "naviguard",
-  );
+  const exampleProject = getPublicDemoProjectProfile();
 
   if (!exampleProject) {
-    throw new Error("NaviGuard example project is not available to seed.");
+    throw new Error("Public demo project is not available to seed.");
   }
 
   const existingProject = await storage.getProject(exampleProject.id);
@@ -212,10 +210,7 @@ export async function cleanupVerificationRecords() {
     storage.listManualFundingCalls(),
   ]);
   const verificationProjects = projects.filter((project) => {
-    return (
-      project.id !== "naviguard" &&
-      project.id.startsWith("supabase-verification-project")
-    );
+    return project.id.startsWith("supabase-verification-project");
   });
   const verificationCalls = manualFundingCalls.filter((call) => {
     return call.id.startsWith("verify-supabase");
@@ -245,14 +240,6 @@ export async function cleanupVerificationRecords() {
       manualFundingCalls: deletedManualFundingCalls,
     },
     skipped: {
-      protectedProjects: projects
-        .filter((project) => project.id === "naviguard")
-        .map((project) => {
-          return {
-            id: project.id,
-            reason: "Protected example project.",
-          };
-        }),
       nonVerificationProjectCount: projects.length - verificationProjects.length,
       nonVerificationManualFundingCallCount:
         manualFundingCalls.length - verificationCalls.length,

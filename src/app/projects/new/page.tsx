@@ -23,6 +23,11 @@ export default function NewProjectPage() {
         </Link>
       </div>
 
+      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+        Do not enter confidential details unless this deployment is private or
+        protected.
+      </div>
+
       <ProjectProfileForm
         action={createProjectAction}
         submitLabel="Save project"

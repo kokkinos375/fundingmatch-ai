@@ -6,6 +6,7 @@ import {
   verdictLabels,
   verdictTone,
 } from "@/lib/labels";
+import { getOfficialCallUrl } from "@/lib/funding-call-links";
 import type { FundingMatch } from "@/lib/schemas";
 
 export function MatchCard({
@@ -15,6 +16,8 @@ export function MatchCard({
   match: FundingMatch;
   rank: number;
 }) {
+  const officialCallUrl = getOfficialCallUrl(match.call);
+
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -121,14 +124,20 @@ export function MatchCard({
         </ExpandableSection>
       </div>
 
-      <a
-        href={match.call.url}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-4 inline-flex text-sm font-semibold text-teal-700 hover:text-teal-900"
-      >
-        Open programme page
-      </a>
+      {officialCallUrl ? (
+        <a
+          href={officialCallUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-100 hover:text-teal-900"
+        >
+          View official call
+        </a>
+      ) : (
+        <p className="mt-4 text-sm font-medium text-slate-500">
+          No official link provided
+        </p>
+      )}
     </article>
   );
 }

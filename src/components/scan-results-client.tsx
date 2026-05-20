@@ -10,6 +10,7 @@ import {
   verdictLabels,
   verdictTone,
 } from "@/lib/labels";
+import { getOfficialCallUrl } from "@/lib/funding-call-links";
 
 type ScanState =
   | { status: "loading" }
@@ -162,6 +163,7 @@ export function ScanResultsClient({
                 <th className="px-4 py-3 font-semibold">Rank</th>
                 <th className="px-4 py-3 font-semibold">Funding call</th>
                 <th className="px-4 py-3 font-semibold">Programme</th>
+                <th className="px-4 py-3 font-semibold">Official link</th>
                 <th className="px-4 py-3 font-semibold">Source</th>
                 <th className="px-4 py-3 font-semibold">Deadline</th>
                 <th className="px-4 py-3 font-semibold">Budget</th>
@@ -172,6 +174,8 @@ export function ScanResultsClient({
             </thead>
             <tbody className="divide-y divide-slate-200">
               {scan.matches.map((match, index) => {
+                const officialCallUrl = getOfficialCallUrl(match.call);
+
                 return (
                   <tr key={match.call.id} className="align-top">
                     <td className="px-4 py-4 font-semibold text-slate-950">
@@ -182,6 +186,22 @@ export function ScanResultsClient({
                     </td>
                     <td className="px-4 py-4 text-slate-600">
                       {match.call.programme}
+                    </td>
+                    <td className="min-w-40 px-4 py-4">
+                      {officialCallUrl ? (
+                        <a
+                          href={officialCallUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100 hover:text-teal-900"
+                        >
+                          View official call
+                        </a>
+                      ) : (
+                        <span className="text-slate-500">
+                          No official link provided
+                        </span>
+                      )}
                     </td>
                     <td className="min-w-44 px-4 py-4 text-slate-600">
                       <div className="flex flex-col gap-2">

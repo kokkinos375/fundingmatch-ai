@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { ProjectCard } from "@/components/project-card";
+import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
 import { getStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await getStorage().listProjects();
+  const projects = (await getStorage().listProjects()).filter((project) => {
+    return !isLegacyPrivateDemoProjectId(project.id);
+  });
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-10">
