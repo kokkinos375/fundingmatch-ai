@@ -29,10 +29,10 @@ export default async function RootLayout({
               <Image
                 src="/brand/fundingmatch-ai-logo.png"
                 alt="FundingMatch AI logo"
-                width={981}
-                height={541}
+                width={1689}
+                height={931}
                 priority
-                className="h-auto w-36 sm:w-44"
+                className="h-auto w-32 sm:w-40"
               />
             </Link>
             <nav className="grid w-full grid-cols-2 gap-2 text-sm text-slate-600 sm:flex sm:w-auto sm:items-center sm:justify-end">

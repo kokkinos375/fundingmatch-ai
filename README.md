@@ -429,11 +429,11 @@ Brand assets:
 
 ```text
 public/brand/fundingmatch-ai-logo.png
-src/app/icon.svg
+src/app/icon.png
 ```
 
-The logo is used in the site header and homepage hero. The SVG app icon is a
-simplified brand mark for browser/app favicon metadata.
+The logo is used in the site header and homepage hero. The PNG app icon is a
+cropped brand mark for browser/app favicon metadata.
 
 Deployment notes:
 

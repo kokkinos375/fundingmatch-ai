@@ -19,10 +19,10 @@ export default async function HomePage() {
           <Image
             src="/brand/fundingmatch-ai-logo.png"
             alt="FundingMatch AI logo"
-            width={981}
-            height={541}
+            width={1689}
+            height={931}
             priority
-            className="mb-8 h-auto w-52 sm:w-64"
+            className="mb-8 h-auto w-56 sm:w-72"
           />
           <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
             Match startup and project profiles to EU funding calls.
