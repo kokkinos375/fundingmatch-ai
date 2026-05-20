@@ -115,19 +115,18 @@ export function ScanResultsClient({
 
       {!scan.usedOpenAI ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-          <p className="font-semibold">AI explanations unavailable</p>
+          <p className="font-semibold">Explanation details may be limited</p>
           <p className="mt-1">
-            The scanner is using local fallback explanations. Deterministic
-            scores, rankings, deadlines, budgets, URLs, and eligibility text
-            still come from the product data and scoring module.
+            Review the official call page before applying. Deadlines, budgets,
+            links, and eligibility text come from the saved funding call data.
           </p>
         </div>
       ) : (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
-          <p className="font-semibold">OpenAI explanations active</p>
+          <p className="font-semibold">Enhanced match notes available</p>
           <p className="mt-1">
-            Scores remain deterministic; OpenAI generated only the explanatory
-            text fields for this scan.
+            Review the fit notes, risks, missing information, and recommended
+            next step before deciding whether to apply.
           </p>
         </div>
       )}
@@ -154,7 +153,7 @@ export function ScanResultsClient({
               Matches for {projectName}, sorted by final score descending.
             </p>
           </div>
-          <Badge tone="slate">Deterministic ranking</Badge>
+          <Badge tone="slate">Ranked matches</Badge>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">

@@ -37,9 +37,8 @@ export default async function ProjectScanPage({
             EU funding matches
           </h1>
           <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-slate-600">
-            Ranked calls from enabled funding sources using deterministic
-            scores. AI is used only for explanation fields when{" "}
-            <code>OPENAI_API_KEY</code> is available.
+            Funding opportunities are ranked based on how well they match this
+            project profile.
           </p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
@@ -47,7 +46,7 @@ export default async function ProjectScanPage({
             Scan agent
           </span>
           <span className="block text-xs text-slate-500">
-            Scores first, explanations second
+            Ranked funding opportunities
           </span>
         </div>
       </div>

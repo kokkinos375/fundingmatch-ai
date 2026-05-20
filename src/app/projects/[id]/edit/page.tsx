@@ -32,7 +32,7 @@ export default async function EditProjectPage({
             Edit project profile
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Update the stored profile used by deterministic funding scans.
+            Update the stored profile used by funding scans.
           </p>
         </div>
         <Link

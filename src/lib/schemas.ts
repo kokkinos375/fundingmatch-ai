@@ -50,6 +50,20 @@ export const defaultScoringWeights = {
 
 const stringListSchema = z.array(z.string().trim().min(1)).default([]);
 
+export const httpUrlSchema = z
+  .string()
+  .trim()
+  .url("Must be a valid URL.")
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Must be a valid http or https URL.");
+
 export const projectProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(2),
@@ -84,12 +98,12 @@ export const fundingCallSchema = z.object({
   status: z.string().min(1),
   deadline: z.string().min(1),
   budget: z.string().min(1),
-  url: z.string().url(),
+  url: httpUrlSchema,
   description: z.string().min(10),
   eligibility: z.string().min(10),
   sourceName: z.string().min(1).optional(),
   sourceType: fundingSourceTypeSchema.optional(),
-  sourceUrl: z.string().url().optional(),
+  sourceUrl: httpUrlSchema.optional(),
   retrievedAt: z.string().datetime().optional(),
 });
 

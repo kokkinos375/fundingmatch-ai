@@ -11,8 +11,8 @@ export default function NewProjectPage() {
             Create a project profile
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Capture enough context for deterministic matching. The profile can
-            be any startup, research project, product, or pilot idea.
+            Capture enough context for funding matching. The profile can be any
+            startup, research project, product, or pilot idea.
           </p>
         </div>
         <Link

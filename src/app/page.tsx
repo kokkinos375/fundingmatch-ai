@@ -19,9 +19,9 @@ export default async function HomePage() {
             Match startup and project profiles to EU funding calls.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            FundingMatch AI keeps project profiles generic, scores mock EU
-            funding calls consistently, and uses AI only to explain the match,
-            risks, missing information, and next step.
+            FundingMatch AI helps teams compare project profiles with funding
+            opportunities and review fit, risks, missing information, and next
+            steps.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -45,7 +45,7 @@ export default async function HomePage() {
                 Funding scan preview
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Deterministic scoring plus AI explanations
+                Ranked opportunities and practical fit notes
               </p>
             </div>
             <Badge tone="teal">MVP</Badge>

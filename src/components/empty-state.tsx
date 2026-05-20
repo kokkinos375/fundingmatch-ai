@@ -7,8 +7,8 @@ export function EmptyState() {
         No project profiles yet
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-        Add a startup or project profile, then run a deterministic funding scan
-        against the enabled funding sources.
+        Add a startup or project profile, then scan for funding opportunities
+        that match it.
       </p>
       <Link
         href="/projects/new"

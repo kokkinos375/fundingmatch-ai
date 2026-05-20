@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   createProjectProfileSchema,
+  httpUrlSchema,
   type CreateProjectProfile,
   type FundingCall,
   type ProjectProfile,
@@ -25,7 +26,7 @@ export const fundingCallInputSchema = z.object({
   status: z.string().trim().min(1),
   deadline: z.string().trim().min(1),
   budget: z.string().trim().min(1),
-  url: z.string().trim().url(),
+  url: httpUrlSchema,
   description: z.string().trim().min(10),
   eligibility: z.string().trim().min(10),
   sourceName: z
@@ -33,7 +34,7 @@ export const fundingCallInputSchema = z.object({
     .default(MANUAL_FUNDING_SOURCE_NAME),
   sourceUrl: z.preprocess(
     emptyStringToUndefined,
-    z.string().trim().url().optional(),
+    httpUrlSchema.optional(),
   ),
 });
 

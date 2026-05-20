@@ -23,7 +23,7 @@ export default async function FundingCallsPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Curate real opportunities from official programme pages and include
-            them in the same deterministic scanner as the demo source.
+            them in project funding scans.
           </p>
         </div>
         <Link

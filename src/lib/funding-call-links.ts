@@ -1,8 +1,12 @@
 import type { FundingCall } from "@/lib/schemas";
 
 export function getOfficialCallUrl(
-  call: Pick<FundingCall, "url" | "sourceUrl">,
+  call: Pick<FundingCall, "url" | "sourceUrl" | "sourceType">,
 ) {
+  if (call.sourceType === "mock") {
+    return null;
+  }
+
   return getValidWebUrl(call.url) ?? getValidWebUrl(call.sourceUrl);
 }
 

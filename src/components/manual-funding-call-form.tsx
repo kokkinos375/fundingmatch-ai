@@ -75,7 +75,7 @@ export function ManualFundingCallForm({
               className={textInputClass}
             />
             <span className={helpClass}>
-              Paste the official programme/call page or application link.
+              Paste the exact official call page or application page.
             </span>
           </label>
         </div>
