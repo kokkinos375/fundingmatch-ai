@@ -4,6 +4,7 @@ import { deleteProjectAction } from "@/app/actions";
 import { Badge } from "@/components/badge";
 import { ConfirmDeleteForm } from "@/components/confirm-delete-form";
 import { fundingTypeLabels, stageLabels } from "@/lib/labels";
+import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
 import { getStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,11 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  if (isLegacyPrivateDemoProjectId(id)) {
+    notFound();
+  }
+
   const project = await getStorage().getProject(id);
 
   if (!project) {

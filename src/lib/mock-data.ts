@@ -11,7 +11,7 @@ export const mockProjectProfiles: ProjectProfile[] = [
     id: "ecosmart-demo",
     name: "EcoSmart Demo",
     shortDescription:
-      "A generic example project that uses AI and sensors to monitor environmental conditions and help organisations identify suitable sustainability funding opportunities.",
+      "A generic example project using AI, sensors, and data analytics to monitor environmental conditions and identify suitable sustainability funding opportunities.",
     country: "Belgium",
     sectors: [
       "sustainability",
@@ -28,12 +28,15 @@ export const mockProjectProfiles: ProjectProfile[] = [
       "EcoSmart Demo combines sensor readings, AI-assisted analysis, and simple reporting workflows to highlight environmental trends and funding-ready pilot opportunities.",
     stage: "prototype",
     trl: 5,
-    preferredFundingTypes: ["grant", "pilot", "voucher"],
+    preferredFundingTypes: ["grant", "pilot", "accelerator"],
     keywords: [
       "sustainability",
       "environmental monitoring",
-      "AI sensors",
+      "AI",
+      "sensors",
       "digital innovation",
+      "climate",
+      "data analytics",
     ],
     avoid: ["defence-only calls", "pure equity"],
     scoringWeights: {

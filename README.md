@@ -93,8 +93,9 @@ To set up Supabase:
 1. Create a Supabase project.
 2. Open the SQL editor.
 3. Run `docs/supabase-schema.sql`.
-4. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `STORAGE_DRIVER=supabase` to your server environment.
-5. Restart the app.
+4. Run `docs/supabase-seed-ecosmart-demo.sql` if you want the public EcoSmart Demo project available in Supabase.
+5. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `STORAGE_DRIVER=supabase` to your server environment.
+6. Restart the app.
 
 `SUPABASE_SERVICE_ROLE_KEY` must remain server-only. Do not expose it through `NEXT_PUBLIC_` variables, browser code, README examples, logs, diagnostics, or client components.
 
@@ -111,6 +112,12 @@ The PostgreSQL table design is in:
 
 ```text
 docs/supabase-schema.sql
+```
+
+The generic public demo seed is in:
+
+```text
+docs/supabase-seed-ecosmart-demo.sql
 ```
 
 ## Funding sources
@@ -257,6 +264,10 @@ POST /api/dev/seed
 
 In development mode, this seeds the configured public demo project only when it is missing. It does not duplicate records and does not create fake funding calls.
 
+By default, the seeded project is `ecosmart-demo` / EcoSmart Demo. Set
+`PUBLIC_DEMO_PROJECT_ID` only if you create another generic, non-confidential
+demo profile.
+
 Verification cleanup endpoint:
 
 ```text
@@ -304,11 +315,17 @@ Every imported project and manual funding call is validated with Zod. Valid reco
 To move data from local JSON to Supabase:
 
 1. Run `docs/supabase-schema.sql` in the Supabase SQL editor.
-2. Add `STORAGE_DRIVER=supabase`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` to the server environment.
-3. Restart the app.
-4. Open `/api/diagnostics/storage/health` and confirm Supabase is ready and list operations work.
-5. Export from the local app with `/api/export`.
-6. Import the exported JSON into the Supabase-backed app with `/api/import` or `/admin/tools`.
+2. Run `docs/supabase-seed-ecosmart-demo.sql` if you want the generic public demo available in production.
+3. Add `STORAGE_DRIVER=supabase`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` to the server environment.
+4. Restart the app.
+5. Open `/api/diagnostics/storage/health` and confirm Supabase is ready and list operations work.
+6. Export from the local app with `/api/export`.
+7. Import the exported JSON into the Supabase-backed app with `/api/import` or `/admin/tools`.
+
+Do not store private startup ideas in public deployments without
+authentication. Generic demo data such as EcoSmart Demo is safe for public
+examples; private project records should live only in private/protected
+deployments.
 
 For Vercel, set these as encrypted project environment variables. Keep the service role key server-only and never expose it in client components, logs, README examples, diagnostics output, or `NEXT_PUBLIC_` variables.
 
@@ -334,6 +351,8 @@ ENABLE_EU_PORTAL_SOURCE=false
 Deployment notes:
 
 - Run `docs/supabase-schema.sql` in Supabase before deploying.
+- Run `docs/supabase-seed-ecosmart-demo.sql` to add or refresh the generic
+  public demo project.
 - Keep RLS enabled on `public.projects` and `public.manual_funding_calls`.
 - No public Supabase `anon` or `authenticated` policies are used yet; the app
   accesses Supabase through server-side `SupabaseStorage`.
@@ -343,6 +362,8 @@ Deployment notes:
 - Do not commit `.env.local` or any `.env.*.local` file.
 - Use only generic demo data on public deployments until authentication is
   added.
+- Do not store private startup ideas in public deployments without
+  authentication.
 - Keep `ENABLE_EU_PORTAL_SOURCE=false` until the official EU Funding & Tenders
   Portal API contract is verified.
 - `/admin/tools` is not protected yet. Protect or disable it before public
@@ -361,6 +382,7 @@ Suggested Vercel flow:
 ## Production readiness checklist
 
 - [ ] Supabase schema applied.
+- [ ] EcoSmart Demo seed applied if the public demo should be available.
 - [ ] RLS enabled on `public.projects`.
 - [ ] RLS enabled on `public.manual_funding_calls`.
 - [ ] OpenAI key configured.

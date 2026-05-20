@@ -2,7 +2,7 @@
   {
     "id": "ecosmart-demo",
     "name": "EcoSmart Demo",
-    "shortDescription": "A generic example project that uses AI and sensors to monitor environmental conditions and help organisations identify suitable sustainability funding opportunities.",
+    "shortDescription": "A generic example project using AI, sensors, and data analytics to monitor environmental conditions and identify suitable sustainability funding opportunities.",
     "country": "Belgium",
     "sectors": [
       "sustainability",
@@ -23,13 +23,16 @@
     "preferredFundingTypes": [
       "grant",
       "pilot",
-      "voucher"
+      "accelerator"
     ],
     "keywords": [
       "sustainability",
       "environmental monitoring",
-      "AI sensors",
-      "digital innovation"
+      "AI",
+      "sensors",
+      "digital innovation",
+      "climate",
+      "data analytics"
     ],
     "avoid": [
       "defence-only calls",

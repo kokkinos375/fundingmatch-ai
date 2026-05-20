@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fundingMatchAgent } from "@/lib/funding-match-agent";
 import { searchEnabledFundingSources } from "@/lib/funding-sources";
+import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
 import { getStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,14 @@ export async function POST(_request: Request, context: ScanRouteContext) {
 
 async function handleScan({ params }: ScanRouteContext) {
   const { id } = await params;
+
+  if (isLegacyPrivateDemoProjectId(id)) {
+    return NextResponse.json(
+      { error: `Project profile "${id}" was not found.` },
+      { status: 404 },
+    );
+  }
+
   const project = await getStorage().getProject(id);
 
   if (!project) {

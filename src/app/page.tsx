@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/badge";
-import { getPublicDemoProjectId, getPublicDemoProjectProfile } from "@/lib/public-demo";
+import {
+  getPublicDemoProjectId,
+  getPublicDemoProjectProfile,
+} from "@/lib/public-demo";
 import { getStorage } from "@/lib/storage";
 
 export default async function HomePage() {
@@ -22,16 +25,16 @@ export default async function HomePage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/projects/new"
+              href={`/projects/${demoProjectId}/scan`}
               className="primary-action inline-flex justify-center rounded-md bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
             >
-              Create project
+              Scan demo project
             </Link>
             <Link
-              href="/projects"
+              href="/projects/new"
               className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              View projects
+              Create project
             </Link>
           </div>
         </div>
