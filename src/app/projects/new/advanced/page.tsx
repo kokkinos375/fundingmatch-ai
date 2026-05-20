@@ -1,31 +1,31 @@
 import Link from "next/link";
 import { createProjectAction } from "@/app/actions";
-import { GuidedProjectCreationFlow } from "@/components/guided-project-creation-flow";
+import { ProjectProfileForm } from "@/components/project-profile-form";
 import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewProjectPage() {
-  await requireUser("/projects/new");
+export default async function AdvancedNewProjectPage() {
+  await requireUser("/projects/new/advanced");
 
   return (
     <section className="mx-auto max-w-5xl px-5 py-10">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-            Create a project profile
+            Advanced project form
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Use the guided setup to capture the basics in a few steps. You can
-            edit advanced details after saving.
+            Enter the full profile used by funding scans. Use this mode when
+            you already know the detailed project context.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm font-semibold">
           <Link
-            href="/projects/new/advanced"
+            href="/projects/new"
             className="text-teal-700 hover:text-teal-900"
           >
-            Advanced form
+            Guided setup
           </Link>
           <Link
             href="/projects"
@@ -41,7 +41,11 @@ export default async function NewProjectPage() {
         protected.
       </div>
 
-      <GuidedProjectCreationFlow action={createProjectAction} />
+      <ProjectProfileForm
+        action={createProjectAction}
+        submitLabel="Save project"
+        cancelHref="/projects"
+      />
     </section>
   );
 }
