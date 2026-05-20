@@ -1,0 +1,50 @@
+[
+  {
+    "id": "naviguard",
+    "name": "NaviGuard",
+    "shortDescription": "AI-assisted monitoring and non-invasive deterrence for safer coastal operations around protected marine wildlife.",
+    "country": "Greece",
+    "sectors": [
+      "maritime",
+      "environment",
+      "wildlife protection"
+    ],
+    "technologies": [
+      "AI",
+      "computer vision",
+      "edge devices",
+      "acoustic sensing"
+    ],
+    "targetUsers": "Ports, coastal municipalities, aquaculture operators, and marine conservation teams.",
+    "problemSolved": "Coastal operators need to reduce vessel and infrastructure risks while avoiding harm to protected marine species.",
+    "solution": "NaviGuard combines edge AI, camera feeds, and configurable alert workflows to detect sensitive wildlife zones and recommend safe operational responses.",
+    "stage": "prototype",
+    "trl": 5,
+    "preferredFundingTypes": [
+      "grant",
+      "pilot",
+      "accelerator"
+    ],
+    "keywords": [
+      "marine safety",
+      "AI monitoring",
+      "protected species",
+      "coastal infrastructure"
+    ],
+    "avoid": [
+      "defence-only calls",
+      "pure equity"
+    ],
+    "scoringWeights": {
+      "topicFit": 5,
+      "eligibilityFit": 3,
+      "fundingFit": 3,
+      "stageFit": 2,
+      "deadlineFit": 2,
+      "competitionRisk": 1,
+      "strategicValue": 4
+    },
+    "createdAt": "2026-05-19T09:00:00.000Z",
+    "updatedAt": "2026-05-19T09:00:00.000Z"
+  }
+]
