@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateProjectAction } from "@/app/actions";
 import { ProjectProfileForm } from "@/components/project-profile-form";
+import { requireUser } from "@/lib/auth";
+import { getPrivateProjectForCurrentUser } from "@/lib/projects";
 import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
-import { getStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export default async function EditProjectPage({
     notFound();
   }
 
-  const project = await getStorage().getProject(id);
+  await requireUser(`/projects/${id}/edit`);
+  const { project } = await getPrivateProjectForCurrentUser(id);
 
   if (!project) {
     notFound();

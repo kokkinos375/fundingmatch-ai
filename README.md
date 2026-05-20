@@ -4,7 +4,7 @@ FundingMatch AI is a Next.js + TypeScript MVP for creating generic startup or pr
 
 The app includes one generic public example profile, EcoSmart Demo, but the schema, form, scoring, and scan flow are generic.
 
-This MVP does not yet include authentication. Any public deployment should use generic demo data only, or add authentication before storing private startup ideas.
+The MVP now includes Supabase Auth. Public visitors can view and scan the generic EcoSmart Demo, while signed-in users get private project profiles, manual funding calls, and saved scan reports.
 
 ## Stack
 
@@ -13,6 +13,7 @@ This MVP does not yet include authentication. Any public deployment should use g
 - Tailwind CSS
 - Zod validation
 - OpenAI API for match explanations and risk notes
+- Supabase Auth for email/password accounts
 - Local JSON storage abstraction for the MVP
 - Funding source abstraction for mock/manual/portal sources
 
@@ -58,6 +59,11 @@ interface AppStorage {
   createManualFundingCall(input: FundingCallInput): Promise<FundingCall>;
   updateManualFundingCall(id: string, input: FundingCallInput): Promise<FundingCall>;
   deleteManualFundingCall(id: string): Promise<void>;
+
+  listSavedScans(): Promise<SavedScan[]>;
+  getSavedScan(id: string): Promise<SavedScan | null>;
+  createSavedScan(input: SavedScanInput): Promise<SavedScan>;
+  deleteSavedScan(id: string): Promise<void>;
 }
 ```
 
@@ -83,6 +89,8 @@ Supabase/PostgreSQL mode is available through `SupabaseStorage`:
 ```bash
 STORAGE_DRIVER=supabase
 SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
@@ -93,20 +101,22 @@ To set up Supabase:
 1. Create a Supabase project.
 2. Open the SQL editor.
 3. Run `docs/supabase-schema.sql`.
-4. Run `docs/supabase-seed-ecosmart-demo.sql` if you want the public EcoSmart Demo project available in Supabase.
-5. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `STORAGE_DRIVER=supabase` to your server environment.
-6. Restart the app.
+4. For an existing database, run `docs/supabase-auth-migration.sql`.
+5. Run `docs/supabase-seed-ecosmart-demo.sql` if you want the public EcoSmart Demo project available in Supabase.
+6. Add `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `STORAGE_DRIVER=supabase` to your environment.
+7. Restart the app.
 
 `SUPABASE_SERVICE_ROLE_KEY` must remain server-only. Do not expose it through `NEXT_PUBLIC_` variables, browser code, README examples, logs, diagnostics, or client components.
 
-The SQL schema enables Row Level Security on `public.projects` and
-`public.manual_funding_calls` by default. It intentionally does not create
-public `anon` or `authenticated` policies yet. The app currently accesses
-Supabase only through server-side `SupabaseStorage` using the service/secret
-key, which must never be exposed to the browser. Add authentication and
-explicit user-scoped RLS policies before allowing direct client access.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are used by Supabase Auth and are safe browser configuration. The service role key is not safe for the browser and must never use a `NEXT_PUBLIC_` prefix.
 
-For Vercel deployment, add `STORAGE_DRIVER`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` as encrypted project environment variables. Use `local_json` only for local MVP work; use Supabase or another durable database for production persistence.
+The SQL schema enables Row Level Security on `public.projects`,
+`public.manual_funding_calls`, and `public.saved_scans`. Authenticated users can
+select, insert, update, and delete only rows where `user_id = auth.uid()`. The
+generic `ecosmart-demo` project is public read-only demo data. Existing rows
+without `user_id` are not publicly readable unless they are the EcoSmart Demo.
+
+For Vercel deployment, add `STORAGE_DRIVER`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` as encrypted project environment variables. Use `local_json` only for local MVP work; use Supabase or another durable database for production persistence.
 
 The PostgreSQL table design is in:
 
@@ -119,6 +129,65 @@ The generic public demo seed is in:
 ```text
 docs/supabase-seed-ecosmart-demo.sql
 ```
+
+## Supabase Auth and private data
+
+Auth pages:
+
+```text
+/auth/login
+/auth/signup
+/auth/callback
+/account
+```
+
+Supabase email/password authentication is used through `@supabase/ssr`.
+In the Supabase Dashboard, open **Authentication -> URL Configuration** and
+configure:
+
+```text
+Site URL:
+https://fundingmatch-ai.vercel.app
+
+Redirect URLs:
+https://fundingmatch-ai.vercel.app/auth/callback
+http://localhost:3000/auth/callback
+```
+
+`NEXT_PUBLIC_SUPABASE_URL` should use the same value as `SUPABASE_URL`.
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` must use the Supabase anon/publishable key,
+not the service role key. `SUPABASE_SERVICE_ROLE_KEY` is server-only and must
+never be imported into client components.
+
+Private routes require a signed-in user:
+
+```text
+/projects/new
+/projects/[id]/edit
+/funding-calls
+/funding-calls/new
+/saved-scans
+/account
+```
+
+Public routes stay available:
+
+```text
+/
+/projects
+/projects/ecosmart-demo
+/projects/ecosmart-demo/scan
+/auth/login
+/auth/signup
+```
+
+`/projects` shows the public EcoSmart Demo to logged-out users. Signed-in users
+see their own private projects plus the public demo. The legacy private demo id
+is blocked from public routes and is not seeded.
+
+Saved scans are stored in `public.saved_scans` and are private per user. On a
+scan page, signed-in users can save the current result snapshot; logged-out
+users see a prompt to log in before saving.
 
 ## Funding sources
 
@@ -242,7 +311,7 @@ Developer diagnostics are available at:
 
 These endpoints report enabled/disabled sources, active storage driver, loaded record counts, validation error counts, Supabase configuration booleans, and whether an OpenAI key is present without exposing secrets.
 
-`/api/diagnostics/storage/health` is the live storage check for switching from `local_json` to Supabase. It reports whether Supabase was selected, whether `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are present as booleans only, whether the adapter is ready, whether projects and manual funding calls can be listed, record counts when accessible, and a sanitized error if a check fails.
+`/api/diagnostics/storage/health` is the live storage check for switching from `local_json` to Supabase. It reports whether Supabase was selected, whether Supabase URL, anon key, and service role key are present as booleans only, whether the adapter is ready, whether projects and manual funding calls can be listed, record counts when accessible, and a sanitized error if a check fails.
 
 ## Admin and data portability tools
 
@@ -254,7 +323,7 @@ Development tools are available at:
 
 This page shows the current storage driver, project count, manual funding call count, OpenAI key presence, and Supabase readiness. It also links to the storage health check, seeds the example project, exports data, and imports portable JSON.
 
-The admin page is not protected yet. Do not expose `/admin/tools` in production until authentication and authorization are added. In production, `/api/dev/seed` returns `403`, but the admin page itself still needs route protection before public launch.
+The admin page is not meant for public use. In production, admin actions are disabled from the UI, `/api/dev/seed` and `/api/dev/cleanup-verification-records` return `403`, and `/api/export` plus `/api/import` require a trusted request with `x-admin-secret` matching `ADMIN_SECRET` when that variable is configured. Protect or remove `/admin/tools` before a public launch.
 
 Development seed endpoint:
 
@@ -291,7 +360,8 @@ The export payload is clean JSON:
 {
   "exportedAt": "2026-05-19T12:00:00.000Z",
   "projects": [],
-  "manualFundingCalls": []
+  "manualFundingCalls": [],
+  "savedScans": []
 }
 ```
 
@@ -316,16 +386,15 @@ To move data from local JSON to Supabase:
 
 1. Run `docs/supabase-schema.sql` in the Supabase SQL editor.
 2. Run `docs/supabase-seed-ecosmart-demo.sql` if you want the generic public demo available in production.
-3. Add `STORAGE_DRIVER=supabase`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` to the server environment.
-4. Restart the app.
-5. Open `/api/diagnostics/storage/health` and confirm Supabase is ready and list operations work.
-6. Export from the local app with `/api/export`.
-7. Import the exported JSON into the Supabase-backed app with `/api/import` or `/admin/tools`.
+3. Run `docs/supabase-auth-migration.sql` for existing databases.
+4. Add `STORAGE_DRIVER=supabase`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to the server environment.
+5. Restart the app.
+6. Open `/api/diagnostics/storage/health` and confirm Supabase is ready and list operations work.
+7. Export from the local app with `/api/export`.
+8. Import the exported JSON into the Supabase-backed app with `/api/import` or `/admin/tools`.
 
-Do not store private startup ideas in public deployments without
-authentication. Generic demo data such as EcoSmart Demo is safe for public
-examples; private project records should live only in private/protected
-deployments.
+Private startup ideas should be stored only after login. Generic demo data such
+as EcoSmart Demo is safe for public examples.
 
 For Vercel, set these as encrypted project environment variables. Keep the service role key server-only and never expose it in client components, logs, README examples, diagnostics output, or `NEXT_PUBLIC_` variables.
 
@@ -342,32 +411,50 @@ OPENAI_API_KEY=
 PUBLIC_DEMO_PROJECT_ID=ecosmart-demo
 STORAGE_DRIVER=supabase
 SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ENABLE_MOCK_SOURCE=true
 ENABLE_MANUAL_SOURCE=true
 ENABLE_EU_PORTAL_SOURCE=false
 ```
 
+Optional production admin variable:
+
+```bash
+ADMIN_SECRET=
+```
+
+Brand assets:
+
+```text
+public/brand/fundingmatch-ai-logo.png
+src/app/icon.svg
+```
+
+The logo is used in the site header and homepage hero. The SVG app icon is a
+simplified brand mark for browser/app favicon metadata.
+
 Deployment notes:
 
 - Run `docs/supabase-schema.sql` in Supabase before deploying.
 - Run `docs/supabase-seed-ecosmart-demo.sql` to add or refresh the generic
   public demo project.
-- Keep RLS enabled on `public.projects` and `public.manual_funding_calls`.
-- No public Supabase `anon` or `authenticated` policies are used yet; the app
-  accesses Supabase through server-side `SupabaseStorage`.
+- Keep RLS enabled on `public.projects`, `public.manual_funding_calls`, and
+  `public.saved_scans`.
+- Run `docs/supabase-auth-migration.sql` when upgrading an existing database.
+- Supabase Auth uses the public anon key; private data access remains scoped by
+  server-side storage code and RLS policies.
 - `SUPABASE_SERVICE_ROLE_KEY` must be server-only.
 - Do not prefix secrets with `NEXT_PUBLIC_`; those variables are exposed to the
   browser bundle.
 - Do not commit `.env.local` or any `.env.*.local` file.
-- Use only generic demo data on public deployments until authentication is
-  added.
-- Do not store private startup ideas in public deployments without
-  authentication.
+- Private startup ideas should be stored only after login. Public pages should
+  continue to use generic demo data such as EcoSmart Demo.
 - Keep `ENABLE_EU_PORTAL_SOURCE=false` until the official EU Funding & Tenders
   Portal API contract is verified.
-- `/admin/tools` is not protected yet. Protect or disable it before public
-  launch.
+- `/admin/tools` is not a public product surface. Protect or remove it before
+  public launch.
 
 Suggested Vercel flow:
 
@@ -385,8 +472,11 @@ Suggested Vercel flow:
 - [ ] EcoSmart Demo seed applied if the public demo should be available.
 - [ ] RLS enabled on `public.projects`.
 - [ ] RLS enabled on `public.manual_funding_calls`.
+- [ ] RLS enabled on `public.saved_scans`.
+- [ ] Supabase Auth email/password enabled.
 - [ ] OpenAI key configured.
 - [ ] Supabase URL configured.
+- [ ] Supabase anon key configured.
 - [ ] Supabase service/secret key configured.
 - [ ] Storage driver set to `supabase`.
 - [ ] Mock source enabled or disabled intentionally.
@@ -408,6 +498,7 @@ npm run build
 
 - Project profiles are stored in `src/data/projects.json` in local JSON mode.
 - Manual funding calls are stored in `src/data/manual-funding-calls.json`.
+- Saved scan snapshots are stored in `src/data/saved-scans.json` in local JSON mode.
 - Funding calls come from every enabled source, then are deduplicated before matching.
 - The scan API is available at `GET` or `POST /api/projects/[id]/scan`.
-- Authentication and payments are intentionally not included.
+- Payments are intentionally not included.

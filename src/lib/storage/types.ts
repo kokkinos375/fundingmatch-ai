@@ -4,7 +4,9 @@ import {
   httpUrlSchema,
   type CreateProjectProfile,
   type FundingCall,
+  type FundingScanResult,
   type ProjectProfile,
+  type SavedScan,
 } from "@/lib/schemas";
 
 export const MANUAL_FUNDING_SOURCE_NAME = "Manual Funding Calls";
@@ -40,9 +42,14 @@ export const fundingCallInputSchema = z.object({
 
 export type ProjectProfileInput = CreateProjectProfile;
 export type FundingCallInput = z.infer<typeof fundingCallInputSchema>;
+export type SavedScanInput = {
+  projectId: string;
+  projectName?: string;
+  result: FundingScanResult;
+};
 
 export type StorageValidationError = {
-  collection: "projects" | "manualFundingCalls";
+  collection: "projects" | "manualFundingCalls" | "savedScans";
   index: number | null;
   id?: string;
   title?: string;
@@ -56,6 +63,7 @@ export type StorageDiagnostics = {
   supabase: {
     selected: boolean;
     hasUrl: boolean;
+    hasAnonKey?: boolean;
     hasServiceRoleKey: boolean;
     ready: boolean;
     accessible: boolean | null;
@@ -63,9 +71,11 @@ export type StorageDiagnostics = {
   };
   projectsLoaded: number | null;
   manualFundingCallsLoaded: number | null;
+  savedScansLoaded?: number | null;
   validationErrorCounts: {
     projects: number | null;
     manualFundingCalls: number | null;
+    savedScans?: number | null;
   };
 };
 
@@ -101,4 +111,9 @@ export interface AppStorage {
   upsertManualFundingCall(
     record: FundingCall,
   ): Promise<StorageUpsertResult<FundingCall>>;
+
+  listSavedScans(): Promise<SavedScan[]>;
+  getSavedScan(id: string): Promise<SavedScan | null>;
+  createSavedScan(input: SavedScanInput): Promise<SavedScan>;
+  deleteSavedScan(id: string): Promise<void>;
 }

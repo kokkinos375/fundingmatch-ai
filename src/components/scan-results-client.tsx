@@ -18,14 +18,22 @@ type ScanState =
   | { status: "success"; scan: FundingScanResult };
 
 export function ScanResultsClient({
+  canSave,
   projectId,
   projectName,
 }: {
+  canSave: boolean;
   projectId: string;
   projectName: string;
 }) {
   const [scanState, setScanState] = useState<ScanState>({ status: "loading" });
   const [scanRun, setScanRun] = useState(0);
+  const [saveState, setSaveState] = useState<
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "saved"; id: string }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -142,6 +150,50 @@ export function ScanResultsClient({
           value={new Date(scan.generatedAt).toLocaleTimeString()}
         />
       </div>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Save this scan
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Keep a snapshot of these matches in your saved scan reports.
+            </p>
+          </div>
+          {canSave ? (
+            <button
+              type="button"
+              onClick={() => saveScan(scan)}
+              disabled={saveState.status === "saving"}
+              className="primary-action inline-flex justify-center rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {saveState.status === "saving" ? "Saving..." : "Save scan"}
+            </button>
+          ) : (
+            <Link
+              href={`/auth/login?next=${encodeURIComponent(`/projects/${projectId}/scan`)}`}
+              className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Log in to save this scan
+            </Link>
+          )}
+        </div>
+        {saveState.status === "saved" ? (
+          <p className="mt-4 text-sm text-emerald-700">
+            Saved.{" "}
+            <Link
+              href={`/saved-scans/${saveState.id}`}
+              className="font-semibold hover:text-emerald-900"
+            >
+              Open saved scan
+            </Link>
+          </p>
+        ) : null}
+        {saveState.status === "error" ? (
+          <p className="mt-4 text-sm text-red-700">{saveState.message}</p>
+        ) : null}
+      </section>
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-2 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -269,6 +321,61 @@ export function ScanResultsClient({
       </section>
     </div>
   );
+
+  async function saveScan(scanToSave: FundingScanResult) {
+    setSaveState({ status: "saving" });
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/saved-scans`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ result: scanToSave }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "The scan could not be saved.",
+        );
+      }
+
+      const savedScanId = getSavedScanId(payload);
+
+      if (!savedScanId) {
+        throw new Error("The scan was saved, but the response was incomplete.");
+      }
+
+      setSaveState({ status: "saved", id: savedScanId });
+    } catch (error) {
+      setSaveState({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "The scan could not be saved.",
+      });
+    }
+  }
+}
+
+function getSavedScanId(payload: unknown) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "savedScan" in payload &&
+    typeof payload.savedScan === "object" &&
+    payload.savedScan !== null &&
+    "id" in payload.savedScan &&
+    typeof payload.savedScan.id === "string"
+  ) {
+    return payload.savedScan.id;
+  }
+
+  return null;
 }
 
 function ScanLoadingState() {

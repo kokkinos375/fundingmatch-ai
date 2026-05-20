@@ -1,12 +1,16 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { getPublicDemoProjectId } from "@/lib/public-demo";
 import {
   fundingCallSchema,
   projectProfileSchema,
+  savedScanSchema,
   type FundingCall,
   type ProjectProfile,
+  type SavedScan,
 } from "@/lib/schemas";
 import {
   getSupabaseServiceRoleKey,
@@ -19,8 +23,14 @@ import {
   type AppStorage,
   type FundingCallInput,
   type ProjectProfileInput,
+  type SavedScanInput,
   type StorageValidationError,
 } from "@/lib/storage/types";
+
+type SupabaseStorageScope = {
+  mode: "scoped" | "admin";
+  userId: string | null;
+};
 
 type ProjectRow = {
   id: string;
@@ -40,6 +50,7 @@ type ProjectRow = {
   scoring_weights: unknown;
   created_at: string | null;
   updated_at: string | null;
+  user_id: string | null;
 };
 
 type ManualFundingCallRow = {
@@ -59,6 +70,16 @@ type ManualFundingCallRow = {
   retrieved_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+  user_id: string | null;
+};
+
+type SavedScanRow = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  project_name: string | null;
+  result: unknown;
+  created_at: string | null;
 };
 
 type ReadResult<T> = {
@@ -69,6 +90,13 @@ type ReadResult<T> = {
 let supabaseClient: SupabaseClient | null = null;
 
 export class SupabaseStorage implements AppStorage {
+  constructor(
+    private readonly scope: SupabaseStorageScope = {
+      mode: "scoped",
+      userId: null,
+    },
+  ) {}
+
   async listProjects(): Promise<ProjectProfile[]> {
     return (await this.readProjectRows()).records.toSorted((first, second) => {
       return second.updatedAt.localeCompare(first.updatedAt);
@@ -76,11 +104,22 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async getProject(id: string): Promise<ProjectProfile | null> {
-    const { data, error } = await getSupabaseClient()
+    if (!this.canReadProject(id)) {
+      return null;
+    }
+
+    let query = getSupabaseClient()
       .from("projects")
       .select("*")
-      .eq("id", id)
-      .maybeSingle<ProjectRow>();
+      .eq("id", id);
+
+    if (!this.isAdmin() && !this.isPublicDemoProject(id)) {
+      const userId = this.requireUserId("read projects");
+
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query.maybeSingle<ProjectRow>();
 
     if (error) {
       throw new Error(`Supabase project lookup failed: ${error.message}`);
@@ -106,11 +145,13 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async createProject(input: ProjectProfileInput): Promise<ProjectProfile> {
+    const userId = this.requireUserId("create projects");
     const parsedInput = projectProfileInputSchema.parse(input);
     const now = new Date().toISOString();
     const id = await this.createUniqueId("projects", parsedInput.name);
     const row = projectInputToRow(parsedInput, {
       id,
+      userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -131,6 +172,7 @@ export class SupabaseStorage implements AppStorage {
     id: string,
     input: ProjectProfileInput,
   ): Promise<ProjectProfile> {
+    const userId = this.requireUserId("update projects");
     const existingProject = await this.getProject(id);
 
     if (!existingProject) {
@@ -140,6 +182,7 @@ export class SupabaseStorage implements AppStorage {
     const parsedInput = projectProfileInputSchema.parse(input);
     const row = projectInputToRow(parsedInput, {
       id,
+      userId,
       createdAt: existingProject.createdAt,
       updatedAt: new Date().toISOString(),
     });
@@ -147,6 +190,7 @@ export class SupabaseStorage implements AppStorage {
       .from("projects")
       .update(row)
       .eq("id", id)
+      .eq("user_id", userId)
       .select("*")
       .single<ProjectRow>();
 
@@ -158,10 +202,12 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async deleteProject(id: string): Promise<void> {
+    const userId = this.requireUserId("delete projects");
     const { error } = await getSupabaseClient()
       .from("projects")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId);
 
     if (error) {
       throw new Error(`Supabase project delete failed: ${error.message}`);
@@ -169,11 +215,15 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async upsertProject(record: ProjectProfile) {
+    if (!this.isAdmin()) {
+      throw new Error("Project import/upsert is available only to admin tools.");
+    }
+
     const parsedRecord = projectProfileSchema.parse(record);
     const existingProject = await this.getProject(parsedRecord.id);
     const { data, error } = await getSupabaseClient()
       .from("projects")
-      .upsert(projectToRow(parsedRecord), { onConflict: "id" })
+      .upsert(projectToRow(parsedRecord, null), { onConflict: "id" })
       .select("*")
       .single<ProjectRow>();
 
@@ -192,11 +242,20 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async getManualFundingCall(id: string): Promise<FundingCall | null> {
-    const { data, error } = await getSupabaseClient()
+    if (!this.isAdmin() && !this.scope.userId) {
+      return null;
+    }
+
+    let query = getSupabaseClient()
       .from("manual_funding_calls")
       .select("*")
-      .eq("id", id)
-      .maybeSingle<ManualFundingCallRow>();
+      .eq("id", id);
+
+    if (!this.isAdmin()) {
+      query = query.eq("user_id", this.requireUserId("read manual calls"));
+    }
+
+    const { data, error } = await query.maybeSingle<ManualFundingCallRow>();
 
     if (error) {
       throw new Error(
@@ -226,6 +285,7 @@ export class SupabaseStorage implements AppStorage {
   async createManualFundingCall(
     input: FundingCallInput,
   ): Promise<FundingCall> {
+    const userId = this.requireUserId("create manual funding calls");
     const parsedInput = fundingCallInputSchema.parse(input);
     const now = new Date().toISOString();
     const id = await this.createUniqueId(
@@ -234,6 +294,7 @@ export class SupabaseStorage implements AppStorage {
     );
     const row = fundingCallInputToRow(parsedInput, {
       id,
+      userId,
       retrievedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -257,6 +318,7 @@ export class SupabaseStorage implements AppStorage {
     id: string,
     input: FundingCallInput,
   ): Promise<FundingCall> {
+    const userId = this.requireUserId("update manual funding calls");
     const existingCall = await this.getManualFundingCall(id);
 
     if (!existingCall) {
@@ -266,6 +328,7 @@ export class SupabaseStorage implements AppStorage {
     const parsedInput = fundingCallInputSchema.parse(input);
     const row = fundingCallInputToRow(parsedInput, {
       id,
+      userId,
       retrievedAt: existingCall.retrievedAt ?? new Date().toISOString(),
       createdAt: null,
       updatedAt: new Date().toISOString(),
@@ -274,6 +337,7 @@ export class SupabaseStorage implements AppStorage {
       .from("manual_funding_calls")
       .update(row)
       .eq("id", id)
+      .eq("user_id", userId)
       .select("*")
       .single<ManualFundingCallRow>();
 
@@ -287,10 +351,12 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async deleteManualFundingCall(id: string): Promise<void> {
+    const userId = this.requireUserId("delete manual funding calls");
     const { error } = await getSupabaseClient()
       .from("manual_funding_calls")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId);
 
     if (error) {
       throw new Error(
@@ -300,6 +366,12 @@ export class SupabaseStorage implements AppStorage {
   }
 
   async upsertManualFundingCall(record: FundingCall) {
+    if (!this.isAdmin()) {
+      throw new Error(
+        "Manual funding call import/upsert is available only to admin tools.",
+      );
+    }
+
     const parsedRecord = fundingCallSchema.parse({
       ...record,
       sourceType: "manual",
@@ -307,7 +379,7 @@ export class SupabaseStorage implements AppStorage {
     const existingCall = await this.getManualFundingCall(parsedRecord.id);
     const { data, error } = await getSupabaseClient()
       .from("manual_funding_calls")
-      .upsert(fundingCallToRow(parsedRecord), { onConflict: "id" })
+      .upsert(fundingCallToRow(parsedRecord, null), { onConflict: "id" })
       .select("*")
       .single<ManualFundingCallRow>();
 
@@ -323,28 +395,124 @@ export class SupabaseStorage implements AppStorage {
     } as const;
   }
 
+  async listSavedScans(): Promise<SavedScan[]> {
+    return (await this.readSavedScanRows()).records.toSorted((first, second) => {
+      return second.createdAt.localeCompare(first.createdAt);
+    });
+  }
+
+  async getSavedScan(id: string): Promise<SavedScan | null> {
+    if (!this.isAdmin() && !this.scope.userId) {
+      return null;
+    }
+
+    let query = getSupabaseClient()
+      .from("saved_scans")
+      .select("*")
+      .eq("id", id);
+
+    if (!this.isAdmin()) {
+      query = query.eq("user_id", this.requireUserId("read saved scans"));
+    }
+
+    const { data, error } = await query.maybeSingle<SavedScanRow>();
+
+    if (error) {
+      throw new Error(`Supabase saved scan lookup failed: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    const mappedScan = mapSavedScanRow(data);
+    const result = savedScanSchema.safeParse(mappedScan);
+
+    if (result.success) {
+      return result.data;
+    }
+
+    logSupabaseValidationWarning(
+      "Invalid Supabase saved scan row skipped",
+      buildValidationError("savedScans", null, data, result.error),
+    );
+
+    return null;
+  }
+
+  async createSavedScan(input: SavedScanInput): Promise<SavedScan> {
+    const userId = this.requireUserId("save scans");
+    const now = new Date().toISOString();
+    const scan = savedScanSchema.parse({
+      id: `scan-${randomUUID()}`,
+      userId,
+      projectId: input.projectId,
+      projectName: input.projectName,
+      result: input.result,
+      createdAt: now,
+    });
+    const { data, error } = await getSupabaseClient()
+      .from("saved_scans")
+      .insert(savedScanToRow(scan))
+      .select("*")
+      .single<SavedScanRow>();
+
+    if (error) {
+      throw new Error(`Supabase saved scan create failed: ${error.message}`);
+    }
+
+    return parseSavedScanRowOrThrow(data);
+  }
+
+  async deleteSavedScan(id: string): Promise<void> {
+    const userId = this.requireUserId("delete saved scans");
+    const { error } = await getSupabaseClient()
+      .from("saved_scans")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (error) {
+      throw new Error(`Supabase saved scan delete failed: ${error.message}`);
+    }
+  }
+
   async getValidationDiagnostics() {
-    const [projects, manualFundingCalls] = await Promise.all([
+    const [projects, manualFundingCalls, savedScans] = await Promise.all([
       this.readProjectRows(),
       this.readManualFundingCallRows(),
+      this.readSavedScanRows(),
     ]);
 
     return {
       projectsLoaded: projects.records.length,
       manualFundingCallsLoaded: manualFundingCalls.records.length,
+      savedScansLoaded: savedScans.records.length,
       validationErrors: [
         ...projects.validationErrors,
         ...manualFundingCalls.validationErrors,
+        ...savedScans.validationErrors,
       ],
     };
   }
 
   private async readProjectRows(): Promise<ReadResult<ProjectProfile>> {
-    const { data, error } = await getSupabaseClient()
+    let query = getSupabaseClient()
       .from("projects")
       .select("*")
-      .order("updated_at", { ascending: false })
-      .returns<ProjectRow[]>();
+      .order("updated_at", { ascending: false });
+
+    if (!this.isAdmin()) {
+      const demoProjectId = getPublicDemoProjectId();
+
+      if (this.scope.userId) {
+        query = query.or(`user_id.eq.${this.scope.userId},id.eq.${demoProjectId}`);
+      } else {
+        query = query.eq("id", demoProjectId);
+      }
+    }
+
+    const { data, error } = await query.returns<ProjectRow[]>();
 
     if (error) {
       throw new Error(`Supabase project list failed: ${error.message}`);
@@ -360,11 +528,20 @@ export class SupabaseStorage implements AppStorage {
   }
 
   private async readManualFundingCallRows(): Promise<ReadResult<FundingCall>> {
-    const { data, error } = await getSupabaseClient()
+    if (!this.isAdmin() && !this.scope.userId) {
+      return { records: [], validationErrors: [] };
+    }
+
+    let query = getSupabaseClient()
       .from("manual_funding_calls")
       .select("*")
-      .order("retrieved_at", { ascending: false, nullsFirst: false })
-      .returns<ManualFundingCallRow[]>();
+      .order("retrieved_at", { ascending: false, nullsFirst: false });
+
+    if (!this.isAdmin()) {
+      query = query.eq("user_id", this.requireUserId("read manual calls"));
+    }
+
+    const { data, error } = await query.returns<ManualFundingCallRow[]>();
 
     if (error) {
       throw new Error(
@@ -378,6 +555,35 @@ export class SupabaseStorage implements AppStorage {
       mapRow: mapManualFundingCallRow,
       schema: fundingCallSchema,
       warningMessage: "Invalid Supabase manual funding call row skipped",
+    });
+  }
+
+  private async readSavedScanRows(): Promise<ReadResult<SavedScan>> {
+    if (!this.isAdmin() && !this.scope.userId) {
+      return { records: [], validationErrors: [] };
+    }
+
+    let query = getSupabaseClient()
+      .from("saved_scans")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!this.isAdmin()) {
+      query = query.eq("user_id", this.requireUserId("read saved scans"));
+    }
+
+    const { data, error } = await query.returns<SavedScanRow[]>();
+
+    if (error) {
+      throw new Error(`Supabase saved scan list failed: ${error.message}`);
+    }
+
+    return parseRows({
+      collection: "savedScans",
+      rows: data ?? [],
+      mapRow: mapSavedScanRow,
+      schema: savedScanSchema,
+      warningMessage: "Invalid Supabase saved scan row skipped",
     });
   }
 
@@ -406,6 +612,26 @@ export class SupabaseStorage implements AppStorage {
     }
 
     return Boolean(data && data.length > 0);
+  }
+
+  private isAdmin() {
+    return this.scope.mode === "admin";
+  }
+
+  private isPublicDemoProject(id: string) {
+    return id === getPublicDemoProjectId();
+  }
+
+  private canReadProject(id: string) {
+    return this.isAdmin() || this.isPublicDemoProject(id) || Boolean(this.scope.userId);
+  }
+
+  private requireUserId(operation: string) {
+    if (this.scope.userId) {
+      return this.scope.userId;
+    }
+
+    throw new Error(`You must be logged in to ${operation}.`);
   }
 }
 
@@ -439,12 +665,14 @@ function projectInputToRow(
   input: ProjectProfileInput,
   metadata: {
     id: string;
+    userId: string;
     createdAt: string;
     updatedAt: string;
   },
 ) {
   return {
     id: metadata.id,
+    user_id: metadata.userId,
     name: input.name,
     short_description: input.shortDescription,
     country: input.country,
@@ -464,9 +692,10 @@ function projectInputToRow(
   };
 }
 
-function projectToRow(project: ProjectProfile) {
+function projectToRow(project: ProjectProfile, userId: string | null) {
   return {
     id: project.id,
+    user_id: userId,
     name: project.name,
     short_description: project.shortDescription,
     country: project.country,
@@ -490,6 +719,7 @@ function fundingCallInputToRow(
   input: FundingCallInput,
   metadata: {
     id: string;
+    userId: string;
     retrievedAt: string;
     createdAt: string | null;
     updatedAt: string;
@@ -497,6 +727,7 @@ function fundingCallInputToRow(
 ) {
   return {
     id: metadata.id,
+    user_id: metadata.userId,
     title: input.title,
     programme: input.programme,
     topic_id: input.topicId,
@@ -515,11 +746,12 @@ function fundingCallInputToRow(
   };
 }
 
-function fundingCallToRow(call: FundingCall) {
+function fundingCallToRow(call: FundingCall, userId: string | null) {
   const now = new Date().toISOString();
 
   return {
     id: call.id,
+    user_id: userId,
     title: call.title,
     programme: call.programme,
     topic_id: call.topicId,
@@ -534,6 +766,17 @@ function fundingCallToRow(call: FundingCall) {
     source_url: call.sourceUrl ?? call.url,
     retrieved_at: call.retrievedAt ?? now,
     updated_at: now,
+  };
+}
+
+function savedScanToRow(scan: SavedScan) {
+  return {
+    id: scan.id,
+    user_id: scan.userId,
+    project_id: scan.projectId,
+    project_name: scan.projectName ?? null,
+    result: scan.result,
+    created_at: scan.createdAt,
   };
 }
 
@@ -580,12 +823,27 @@ function mapManualFundingCallRow(row: ManualFundingCallRow) {
   };
 }
 
+function mapSavedScanRow(row: SavedScanRow) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    projectId: row.project_id,
+    projectName: row.project_name ?? undefined,
+    result: row.result,
+    createdAt: normalizeTimestamp(row.created_at, new Date().toISOString()),
+  };
+}
+
 function parseProjectRowOrThrow(row: ProjectRow) {
   return projectProfileSchema.parse(mapProjectRow(row));
 }
 
 function parseFundingCallRowOrThrow(row: ManualFundingCallRow) {
   return fundingCallSchema.parse(mapManualFundingCallRow(row));
+}
+
+function parseSavedScanRowOrThrow(row: SavedScanRow) {
+  return savedScanSchema.parse(mapSavedScanRow(row));
 }
 
 function parseRows<Row, Parsed>({

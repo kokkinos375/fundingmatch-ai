@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
+import {
+  adminToolForbiddenResponse,
+  isAdminToolRequestAllowed,
+} from "@/lib/admin-tools";
 import { importPortableAppData } from "@/lib/storage/portable-data";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!isAdminToolRequestAllowed(request)) {
+    return adminToolForbiddenResponse();
+  }
+
   const payload = await request.json().catch((error: unknown) => {
     return {
       __parseError:

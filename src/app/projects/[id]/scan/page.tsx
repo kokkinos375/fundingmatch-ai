@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ScanResultsClient } from "@/components/scan-results-client";
+import { getProjectForCurrentUser } from "@/lib/projects";
 import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
-import { getStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export default async function ProjectScanPage({
     notFound();
   }
 
-  const project = await getStorage().getProject(id);
+  const { project, user } = await getProjectForCurrentUser(id);
 
   if (!project) {
     notFound();
@@ -51,7 +51,11 @@ export default async function ProjectScanPage({
         </div>
       </div>
 
-      <ScanResultsClient projectId={project.id} projectName={project.name} />
+      <ScanResultsClient
+        canSave={Boolean(user)}
+        projectId={project.id}
+        projectName={project.name}
+      />
     </section>
   );
 }

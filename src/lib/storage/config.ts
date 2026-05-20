@@ -14,6 +14,22 @@ export function getSupabaseUrl() {
   return process.env.SUPABASE_URL?.trim() || null;
 }
 
+export function getSupabasePublicUrl() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    process.env.SUPABASE_URL?.trim() ||
+    null
+  );
+}
+
+export function getSupabaseAnonKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || null;
+}
+
+export function hasSupabaseAnonKey() {
+  return Boolean(getSupabaseAnonKey());
+}
+
 export function hasSupabaseServiceRoleKey() {
   return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 }

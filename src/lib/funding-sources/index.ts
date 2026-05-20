@@ -16,7 +16,10 @@ import type {
 } from "@/lib/funding-sources/types";
 import type { FundingCall, ProjectProfile } from "@/lib/schemas";
 import { getStorageDiagnostics } from "@/lib/storage";
-import { MANUAL_FUNDING_SOURCE_NAME } from "@/lib/storage/types";
+import {
+  MANUAL_FUNDING_SOURCE_NAME,
+  type AppStorage,
+} from "@/lib/storage/types";
 
 export async function getFundingSourceDiagnostics() {
   const storageDiagnostics = await getStorageDiagnostics();
@@ -66,7 +69,7 @@ export async function getFundingSourceDiagnostics() {
   };
 }
 
-export function getEnabledFundingSources(): FundingSource[] {
+export function getEnabledFundingSources(storage?: AppStorage): FundingSource[] {
   const sources: FundingSource[] = [];
 
   if (isMockSourceEnabled()) {
@@ -74,7 +77,7 @@ export function getEnabledFundingSources(): FundingSource[] {
   }
 
   if (isManualSourceEnabled()) {
-    sources.push(new ManualFundingSource());
+    sources.push(new ManualFundingSource(storage));
   }
 
   if (isEUPortalSourceEnabled() && isEUPortalIntegrationVerified()) {
@@ -84,8 +87,11 @@ export function getEnabledFundingSources(): FundingSource[] {
   return sources;
 }
 
-export async function searchEnabledFundingSources(project: ProjectProfile) {
-  const sources = getEnabledFundingSources();
+export async function searchEnabledFundingSources(
+  project: ProjectProfile,
+  options: { storage?: AppStorage } = {},
+) {
+  const sources = getEnabledFundingSources(options.storage);
 
   logSourceDebug("Selected funding sources", {
     sources: sources.map((source) => ({

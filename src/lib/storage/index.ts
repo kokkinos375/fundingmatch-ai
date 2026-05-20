@@ -1,6 +1,7 @@
 import {
   getConfiguredStorageDriver,
   hasRequiredSupabaseConfiguration,
+  hasSupabaseAnonKey,
   hasSupabaseServiceRoleKey,
   getSupabaseUrl,
 } from "@/lib/storage/config";
@@ -9,16 +10,19 @@ import { SupabaseStorage } from "@/lib/storage/supabase-storage";
 import type { AppStorage, StorageDiagnostics } from "@/lib/storage/types";
 
 let localJsonStorage: LocalJsonStorage | null = null;
-let supabaseStorage: SupabaseStorage | null = null;
 
 export function getStorage(): AppStorage {
+  return getStorageForUser(null);
+}
+
+export function getStorageForUser(userId: string | null): AppStorage {
   const configuredDriver = getConfiguredStorageDriver();
 
   if (configuredDriver === "supabase") {
     const canUseSupabase = hasRequiredSupabaseConfiguration();
 
     if (canUseSupabase) {
-      return getSupabaseStorage();
+      return new SupabaseStorage({ mode: "scoped", userId });
     }
 
     logStorageDebug("Supabase storage requested; using local JSON fallback", {
@@ -26,7 +30,17 @@ export function getStorage(): AppStorage {
     });
   }
 
-  return getLocalJsonStorage();
+  return getLocalJsonStorage(userId);
+}
+
+export function getAdminStorage(): AppStorage {
+  const configuredDriver = getConfiguredStorageDriver();
+
+  if (configuredDriver === "supabase" && hasRequiredSupabaseConfiguration()) {
+    return new SupabaseStorage({ mode: "admin", userId: null });
+  }
+
+  return new LocalJsonStorage(null, "admin");
 }
 
 export async function getStorageDiagnostics(): Promise<StorageDiagnostics> {
@@ -47,12 +61,15 @@ async function getLocalJsonDiagnostics(
   configuredDriver: StorageDiagnostics["configuredDriver"],
   activeDriver: StorageDiagnostics["activeDriver"],
 ): Promise<StorageDiagnostics> {
-  const localDiagnostics = await getLocalJsonStorage().getValidationDiagnostics();
+  const localDiagnostics = await getLocalJsonStorage(null).getValidationDiagnostics();
   const projectErrorCount = localDiagnostics.validationErrors.filter(
     (error) => error.collection === "projects",
   ).length;
   const manualCallErrorCount = localDiagnostics.validationErrors.filter(
     (error) => error.collection === "manualFundingCalls",
+  ).length;
+  const savedScanErrorCount = localDiagnostics.validationErrors.filter(
+    (error) => error.collection === "savedScans",
   ).length;
   const supabaseSelected = configuredDriver === "supabase";
   const supabaseReady = hasRequiredSupabaseConfiguration();
@@ -64,6 +81,7 @@ async function getLocalJsonDiagnostics(
     supabase: {
       selected: supabaseSelected,
       hasUrl: Boolean(getSupabaseUrl()),
+      hasAnonKey: hasSupabaseAnonKey(),
       hasServiceRoleKey: hasSupabaseServiceRoleKey(),
       ready: supabaseReady,
       accessible: null,
@@ -74,9 +92,11 @@ async function getLocalJsonDiagnostics(
     },
     projectsLoaded: localDiagnostics.projectsLoaded,
     manualFundingCallsLoaded: localDiagnostics.manualFundingCallsLoaded,
+    savedScansLoaded: localDiagnostics.savedScansLoaded,
     validationErrorCounts: {
       projects: projectErrorCount,
       manualFundingCalls: manualCallErrorCount,
+      savedScans: savedScanErrorCount,
     },
   };
 }
@@ -86,7 +106,10 @@ async function getSupabaseDiagnostics(
   activeDriver: StorageDiagnostics["activeDriver"],
 ): Promise<StorageDiagnostics> {
   try {
-    const diagnostics = await getSupabaseStorage().getValidationDiagnostics();
+    const diagnostics = await new SupabaseStorage({
+      mode: "admin",
+      userId: null,
+    }).getValidationDiagnostics();
 
     return {
       configuredDriver,
@@ -95,18 +118,23 @@ async function getSupabaseDiagnostics(
       supabase: {
         selected: true,
         hasUrl: Boolean(getSupabaseUrl()),
+        hasAnonKey: hasSupabaseAnonKey(),
         hasServiceRoleKey: hasSupabaseServiceRoleKey(),
         ready: true,
         accessible: true,
       },
       projectsLoaded: diagnostics.projectsLoaded,
       manualFundingCallsLoaded: diagnostics.manualFundingCallsLoaded,
+      savedScansLoaded: diagnostics.savedScansLoaded,
       validationErrorCounts: {
         projects: diagnostics.validationErrors.filter(
           (error) => error.collection === "projects",
         ).length,
         manualFundingCalls: diagnostics.validationErrors.filter(
           (error) => error.collection === "manualFundingCalls",
+        ).length,
+        savedScans: diagnostics.validationErrors.filter(
+          (error) => error.collection === "savedScans",
         ).length,
       },
     };
@@ -118,6 +146,7 @@ async function getSupabaseDiagnostics(
       supabase: {
         selected: true,
         hasUrl: Boolean(getSupabaseUrl()),
+        hasAnonKey: hasSupabaseAnonKey(),
         hasServiceRoleKey: hasSupabaseServiceRoleKey(),
         ready: true,
         accessible: false,
@@ -125,28 +154,26 @@ async function getSupabaseDiagnostics(
       },
       projectsLoaded: null,
       manualFundingCallsLoaded: null,
+      savedScansLoaded: null,
       validationErrorCounts: {
         projects: null,
         manualFundingCalls: null,
+        savedScans: null,
       },
     };
   }
 }
 
-function getLocalJsonStorage() {
-  if (!localJsonStorage) {
-    localJsonStorage = new LocalJsonStorage();
+function getLocalJsonStorage(userId: string | null) {
+  if (!userId) {
+    if (!localJsonStorage) {
+      localJsonStorage = new LocalJsonStorage(null, "scoped");
+    }
+
+    return localJsonStorage;
   }
 
-  return localJsonStorage;
-}
-
-function getSupabaseStorage() {
-  if (!supabaseStorage) {
-    supabaseStorage = new SupabaseStorage();
-  }
-
-  return supabaseStorage;
+  return new LocalJsonStorage(userId);
 }
 
 function logStorageDebug(message: string, metadata: Record<string, unknown>) {

@@ -142,6 +142,15 @@ export const fundingScanResultSchema = z.object({
   usedOpenAI: z.boolean(),
 });
 
+export const savedScanSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().uuid(),
+  projectId: z.string().min(1),
+  projectName: z.string().min(1).optional(),
+  result: fundingScanResultSchema,
+  createdAt: z.string().datetime(),
+});
+
 export type ProjectStage = z.infer<typeof projectStageSchema>;
 export type FundingType = z.infer<typeof fundingTypeSchema>;
 export type FundingSourceType = z.infer<typeof fundingSourceTypeSchema>;
@@ -154,4 +163,5 @@ export type FundingMatchExplanation = z.infer<
 >;
 export type FundingMatch = z.infer<typeof fundingMatchSchema>;
 export type FundingScanResult = z.infer<typeof fundingScanResultSchema>;
+export type SavedScan = z.infer<typeof savedScanSchema>;
 export type Verdict = z.infer<typeof verdictSchema>;

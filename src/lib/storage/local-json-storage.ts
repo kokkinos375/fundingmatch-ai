@@ -1,13 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { mockProjectProfiles } from "@/lib/mock-data";
+import { getPublicDemoProjectId } from "@/lib/public-demo";
 import {
   createProjectProfileSchema,
   fundingCallSchema,
   projectProfileSchema,
+  savedScanSchema,
   type FundingCall,
   type ProjectProfile,
+  type SavedScan,
 } from "@/lib/schemas";
 import {
   fundingCallInputSchema,
@@ -15,6 +19,7 @@ import {
   type AppStorage,
   type FundingCallInput,
   type ProjectProfileInput,
+  type SavedScanInput,
   type StorageValidationError,
 } from "@/lib/storage/types";
 
@@ -25,6 +30,12 @@ const manualFundingCallsFilePath = path.join(
   "data",
   "manual-funding-calls.json",
 );
+const savedScansFilePath = path.join(
+  process.cwd(),
+  "src",
+  "data",
+  "saved-scans.json",
+);
 
 type ReadResult<T> = {
   records: T[];
@@ -32,10 +43,21 @@ type ReadResult<T> = {
 };
 
 export class LocalJsonStorage implements AppStorage {
+  constructor(
+    private readonly userId: string | null = null,
+    private readonly mode: "scoped" | "admin" = "scoped",
+  ) {}
+
   async listProjects() {
     const result = readProjectsFile();
+    const records =
+      this.isAdmin() || this.userId
+        ? result.records
+        : result.records.filter((project) => {
+            return project.id === getPublicDemoProjectId();
+          });
 
-    return result.records.toSorted((first, second) => {
+    return records.toSorted((first, second) => {
       return second.updatedAt.localeCompare(first.updatedAt);
     });
   }
@@ -47,6 +69,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async createProject(input: ProjectProfileInput) {
+    this.requireWritableScope("create projects");
     const parsedInput = createProjectProfileSchema.parse(input);
     const projects = readProjectsFile().records;
     const now = new Date().toISOString();
@@ -63,6 +86,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async updateProject(id: string, input: ProjectProfileInput) {
+    this.requireWritableScope("update projects");
     const parsedInput = createProjectProfileSchema.parse(input);
     const projects = readProjectsFile().records;
     const existingProject = projects.find((project) => project.id === id);
@@ -88,6 +112,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async deleteProject(id: string) {
+    this.requireWritableScope("delete projects");
     const projects = readProjectsFile().records;
     const nextProjects = projects.filter((project) => project.id !== id);
 
@@ -115,6 +140,10 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async listManualFundingCalls() {
+    if (!this.isAdmin() && !this.userId) {
+      return [];
+    }
+
     return readManualFundingCallsFile().records;
   }
 
@@ -125,6 +154,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async createManualFundingCall(input: FundingCallInput) {
+    this.requireWritableScope("create manual funding calls");
     const calls = readManualFundingCallsFile().records;
     const existingIds = new Set(calls.map((call) => call.id));
     const call = parseManualFundingCallInput(input, {
@@ -138,6 +168,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async updateManualFundingCall(id: string, input: FundingCallInput) {
+    this.requireWritableScope("update manual funding calls");
     const calls = readManualFundingCallsFile().records;
     const existingCall = calls.find((call) => call.id === id);
 
@@ -161,6 +192,7 @@ export class LocalJsonStorage implements AppStorage {
   }
 
   async deleteManualFundingCall(id: string) {
+    this.requireWritableScope("delete manual funding calls");
     const calls = readManualFundingCallsFile().records;
     const nextCalls = calls.filter((call) => call.id !== id);
 
@@ -188,18 +220,87 @@ export class LocalJsonStorage implements AppStorage {
     } as const;
   }
 
+  async listSavedScans() {
+    if (!this.isAdmin() && !this.userId) {
+      return [];
+    }
+
+    return readSavedScansFile().records
+      .filter((scan) => {
+        return this.isAdmin() || scan.userId === this.userId;
+      })
+      .toSorted((first, second) => {
+        return second.createdAt.localeCompare(first.createdAt);
+      });
+  }
+
+  async getSavedScan(id: string) {
+    const scans = await this.listSavedScans();
+
+    return scans.find((scan) => scan.id === id) ?? null;
+  }
+
+  async createSavedScan(input: SavedScanInput) {
+    if (!this.userId) {
+      throw new Error("You must be logged in to save scans.");
+    }
+
+    const scans = readSavedScansFile().records;
+    const now = new Date().toISOString();
+    const scan = savedScanSchema.parse({
+      id: `scan-${randomUUID()}`,
+      userId: this.userId,
+      projectId: input.projectId,
+      projectName: input.projectName,
+      result: input.result,
+      createdAt: now,
+    });
+
+    writeSavedScansFile([scan, ...scans]);
+
+    return scan;
+  }
+
+  async deleteSavedScan(id: string) {
+    if (!this.userId) {
+      return;
+    }
+
+    const scans = readSavedScansFile().records;
+    const nextScans = scans.filter((scan) => {
+      return !(scan.id === id && scan.userId === this.userId);
+    });
+
+    writeSavedScansFile(nextScans);
+  }
+
   async getValidationDiagnostics() {
     const projects = readProjectsFile();
     const calls = readManualFundingCallsFile();
+    const scans = readSavedScansFile();
 
     return {
       projectsLoaded: projects.records.length,
       manualFundingCallsLoaded: calls.records.length,
+      savedScansLoaded: scans.records.length,
       validationErrors: [
         ...projects.validationErrors,
         ...calls.validationErrors,
+        ...scans.validationErrors,
       ],
     };
+  }
+
+  private isAdmin() {
+    return this.mode === "admin";
+  }
+
+  private requireWritableScope(operation: string) {
+    if (this.isAdmin() || this.userId) {
+      return;
+    }
+
+    throw new Error(`You must be logged in to ${operation}.`);
   }
 }
 
@@ -217,6 +318,15 @@ function readManualFundingCallsFile(): ReadResult<FundingCall> {
     filePath: manualFundingCallsFilePath,
     collection: "manualFundingCalls",
     schema: fundingCallSchema,
+    defaultRecords: [],
+  });
+}
+
+function readSavedScansFile(): ReadResult<SavedScan> {
+  return readValidatedArrayFile({
+    filePath: savedScansFilePath,
+    collection: "savedScans",
+    schema: savedScanSchema,
     defaultRecords: [],
   });
 }
@@ -314,6 +424,10 @@ function writeProjectsFile(projects: ProjectProfile[]) {
 
 function writeManualFundingCallsFile(calls: FundingCall[]) {
   writeJsonArrayFile(manualFundingCallsFilePath, calls);
+}
+
+function writeSavedScansFile(scans: SavedScan[]) {
+  writeJsonArrayFile(savedScansFilePath, scans);
 }
 
 function ensureJsonArrayFile<T>(filePath: string, defaultRecords: T[]) {

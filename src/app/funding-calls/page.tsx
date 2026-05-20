@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { ManualCallImporter } from "@/components/manual-call-importer";
+import { requireUser } from "@/lib/auth";
 import { fundingSourceTypeLabels } from "@/lib/labels";
-import { getStorage, getStorageDiagnostics } from "@/lib/storage";
+import { getStorageDiagnostics, getStorageForUser } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 export default async function FundingCallsPage() {
+  const user = await requireUser("/funding-calls");
   const [calls, storageDiagnostics] = await Promise.all([
-    getStorage().listManualFundingCalls(),
+    getStorageForUser(user.id).listManualFundingCalls(),
     getStorageDiagnostics(),
   ]);
   const validationErrorCount =
@@ -53,7 +55,7 @@ export default async function FundingCallsPage() {
                 Curated database
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                {calls.length} manual calls loaded from local JSON.
+                {calls.length} manual calls loaded for your account.
               </p>
             </div>
             <Badge tone="green">{fundingSourceTypeLabels.manual}</Badge>

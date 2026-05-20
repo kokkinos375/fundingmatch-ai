@@ -5,8 +5,9 @@ import {
   projectProfileSchema,
   type FundingCall,
   type ProjectProfile,
+  type SavedScan,
 } from "@/lib/schemas";
-import { getStorage, getStorageDiagnostics } from "@/lib/storage";
+import { getAdminStorage, getStorageDiagnostics } from "@/lib/storage";
 
 const manualFundingCallPortableSchema = fundingCallSchema
   .extend({
@@ -23,6 +24,7 @@ export type PortableAppData = {
   exportedAt: string;
   projects: ProjectProfile[];
   manualFundingCalls: FundingCall[];
+  savedScans: SavedScan[];
 };
 
 type ImportCollection = "projects" | "manualFundingCalls";
@@ -51,23 +53,25 @@ export type PortableImportResult = {
 };
 
 export async function exportPortableAppData(): Promise<PortableAppData> {
-  const storage = getStorage();
-  const [projects, manualFundingCalls] = await Promise.all([
+  const storage = getAdminStorage();
+  const [projects, manualFundingCalls, savedScans] = await Promise.all([
     storage.listProjects(),
     storage.listManualFundingCalls(),
+    storage.listSavedScans(),
   ]);
 
   return {
     exportedAt: new Date().toISOString(),
     projects,
     manualFundingCalls,
+    savedScans,
   };
 }
 
 export async function importPortableAppData(
   payload: unknown,
 ): Promise<PortableImportResult> {
-  const storage = getStorage();
+  const storage = getAdminStorage();
   const result = createEmptyImportResult();
 
   if (!isRecord(payload)) {
@@ -169,7 +173,7 @@ export async function importPortableAppData(
 }
 
 export async function seedExampleProject() {
-  const storage = getStorage();
+  const storage = getAdminStorage();
   const exampleProject = getPublicDemoProjectProfile();
 
   if (!exampleProject) {
@@ -204,7 +208,7 @@ export async function seedExampleProject() {
 }
 
 export async function cleanupVerificationRecords() {
-  const storage = getStorage();
+  const storage = getAdminStorage();
   const [projects, manualFundingCalls] = await Promise.all([
     storage.listProjects(),
     storage.listManualFundingCalls(),
@@ -249,11 +253,12 @@ export async function cleanupVerificationRecords() {
 
 export async function getStorageHealth() {
   const diagnostics = await getStorageDiagnostics();
-  const storage = getStorage();
+  const storage = getAdminStorage();
   let canListProjects = false;
   let canListManualFundingCalls = false;
   let projectCount: number | null = null;
   let manualFundingCallCount: number | null = null;
+  let savedScanCount: number | null = null;
   const errors: string[] = [];
 
   try {
@@ -272,16 +277,25 @@ export async function getStorageHealth() {
     errors.push(`Manual funding calls: ${sanitizeImportError(error)}`);
   }
 
+  try {
+    const savedScans = await storage.listSavedScans();
+    savedScanCount = savedScans.length;
+  } catch (error) {
+    errors.push(`Saved scans: ${sanitizeImportError(error)}`);
+  }
+
   return {
     activeStorageDriver: diagnostics.activeDriver,
     supabaseSelected: diagnostics.supabase.selected,
     supabaseUrlPresent: diagnostics.supabase.hasUrl,
+    supabaseAnonKeyPresent: diagnostics.supabase.hasAnonKey ?? false,
     supabaseServiceRoleKeyPresent: diagnostics.supabase.hasServiceRoleKey,
     supabaseReady: diagnostics.supabase.ready,
     canListProjects,
     canListManualFundingCalls,
     projectCount,
     manualFundingCallCount,
+    savedScanCount,
     error:
       errors.length > 0
         ? errors.join(" ")

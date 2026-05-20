@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { fundingMatchAgent } from "@/lib/funding-match-agent";
 import { searchEnabledFundingSources } from "@/lib/funding-sources";
-import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
-import { getStorage } from "@/lib/storage";
+import {
+  getPublicDemoProjectId,
+  getPublicDemoProjectProfile,
+  isLegacyPrivateDemoProjectId,
+} from "@/lib/public-demo";
+import { getStorageForUser } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +33,11 @@ async function handleScan({ params }: ScanRouteContext) {
     );
   }
 
-  const project = await getStorage().getProject(id);
+  const user = await getCurrentUser();
+  const storage = getStorageForUser(user?.id ?? null);
+  const project =
+    (await storage.getProject(id)) ??
+    (id === getPublicDemoProjectId() ? getPublicDemoProjectProfile() : null);
 
   if (!project) {
     return NextResponse.json(
@@ -37,7 +46,7 @@ async function handleScan({ params }: ScanRouteContext) {
     );
   }
 
-  const calls = await searchEnabledFundingSources(project);
+  const calls = await searchEnabledFundingSources(project, { storage });
   const result = await fundingMatchAgent(project, calls);
 
   return NextResponse.json(result);

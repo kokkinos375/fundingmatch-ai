@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { createManualFundingCallAction } from "@/app/funding-calls/actions";
 import { ManualFundingCallForm } from "@/components/manual-funding-call-form";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function NewFundingCallPage() {
+export default async function NewFundingCallPage() {
+  await requireUser("/funding-calls/new");
+
   return (
     <section className="mx-auto max-w-5xl px-5 py-10">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

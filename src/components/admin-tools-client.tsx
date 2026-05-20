@@ -13,13 +13,17 @@ const defaultImportJson = `{
   "manualFundingCalls": []
 }`;
 
-export function AdminToolsClient() {
+export function AdminToolsClient({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
   const [result, setResult] = useState<ToolResult | null>(null);
   const [importJson, setImportJson] = useState(defaultImportJson);
   const [isBusy, setIsBusy] = useState(false);
 
   async function runSeed() {
+    if (disabled) {
+      return;
+    }
+
     setIsBusy(true);
 
     try {
@@ -41,6 +45,10 @@ export function AdminToolsClient() {
   }
 
   async function runVerificationCleanup() {
+    if (disabled) {
+      return;
+    }
+
     const confirmed = window.confirm(
       "Remove only records whose ids start with supabase-verification-project or verify-supabase?",
     );
@@ -76,6 +84,10 @@ export function AdminToolsClient() {
   }
 
   async function runImport() {
+    if (disabled) {
+      return;
+    }
+
     setIsBusy(true);
 
     try {
@@ -104,6 +116,12 @@ export function AdminToolsClient() {
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-950">Actions</h2>
+        {disabled ? (
+          <p className="mt-2 text-sm leading-6 text-red-700">
+            Admin actions are disabled in production unless they are called with
+            a configured admin secret from a trusted server context.
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <a
             href="/api/diagnostics/storage/health"
@@ -116,21 +134,27 @@ export function AdminToolsClient() {
           <button
             type="button"
             onClick={runSeed}
-            disabled={isBusy}
+            disabled={disabled || isBusy}
             className="primary-action inline-flex justify-center rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             Seed example project
           </button>
-          <a
-            href="/api/export"
-            className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Export data
-          </a>
+          {disabled ? (
+            <span className="inline-flex justify-center rounded-md border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400">
+              Export data
+            </span>
+          ) : (
+            <a
+              href="/api/export"
+              className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Export data
+            </a>
+          )}
           <button
             type="button"
             onClick={runImport}
-            disabled={isBusy || importJson.trim().length === 0}
+            disabled={disabled || isBusy || importJson.trim().length === 0}
             className="primary-action inline-flex justify-center rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             Import JSON
@@ -138,7 +162,7 @@ export function AdminToolsClient() {
           <button
             type="button"
             onClick={runVerificationCleanup}
-            disabled={isBusy}
+            disabled={disabled || isBusy}
             className="inline-flex justify-center rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             Clean test records

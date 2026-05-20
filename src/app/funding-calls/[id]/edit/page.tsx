@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateManualFundingCallAction } from "@/app/funding-calls/actions";
 import { ManualFundingCallForm } from "@/components/manual-funding-call-form";
-import { getStorage } from "@/lib/storage";
+import { requireUser } from "@/lib/auth";
+import { getStorageForUser } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,8 @@ export default async function EditFundingCallPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const call = await getStorage().getManualFundingCall(id);
+  const user = await requireUser(`/funding-calls/${id}/edit`);
+  const call = await getStorageForUser(user.id).getManualFundingCall(id);
 
   if (!call) {
     notFound();

@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { importManualFundingCallsFromJson } from "@/lib/storage/manual-import";
+import { getStorageForUser } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { error: "Log in to import manual funding calls." },
+      { status: 401 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body.json !== "string") {
@@ -22,7 +33,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await importManualFundingCallsFromJson(body.json);
+  const result = await importManualFundingCallsFromJson(
+    body.json,
+    getStorageForUser(user.id),
+  );
   const hasImportedCalls = result.importedCount > 0;
   const status = hasImportedCalls || result.validationErrors.length === 0 ? 200 : 400;
 

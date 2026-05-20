@@ -36,8 +36,8 @@ export default async function AdminToolsPage() {
 
       <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-950">
         <p className="font-semibold">
-          Development/admin tools are not protected yet. Do not expose this page
-          in production.
+          Development/admin tools are not a public product surface. Do not
+          expose this page in production.
         </p>
         {isProduction ? (
           <p className="mt-1">
@@ -94,6 +94,10 @@ export default async function AdminToolsPage() {
             active={diagnostics.supabase.hasUrl}
           />
           <StatusMetric
+            label="Supabase anon key present"
+            active={diagnostics.supabase.hasAnonKey ?? false}
+          />
+          <StatusMetric
             label="Supabase service key present"
             active={diagnostics.supabase.hasServiceRoleKey}
           />
@@ -117,7 +121,7 @@ export default async function AdminToolsPage() {
       </section>
 
       <div className="mt-8">
-        <AdminToolsClient />
+        <AdminToolsClient disabled={isProduction} />
       </div>
     </section>
   );

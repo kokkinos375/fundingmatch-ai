@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { deleteManualFundingCallAction } from "@/app/funding-calls/actions";
 import { Badge } from "@/components/badge";
 import { ConfirmDeleteForm } from "@/components/confirm-delete-form";
+import { requireUser } from "@/lib/auth";
 import { fundingSourceTypeLabels } from "@/lib/labels";
-import { getStorage } from "@/lib/storage";
+import { getStorageForUser } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ export default async function FundingCallDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const call = await getStorage().getManualFundingCall(id);
+  const user = await requireUser(`/funding-calls/${id}`);
+  const call = await getStorageForUser(user.id).getManualFundingCall(id);
 
   if (!call) {
     notFound();

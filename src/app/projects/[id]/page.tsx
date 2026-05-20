@@ -4,8 +4,11 @@ import { deleteProjectAction } from "@/app/actions";
 import { Badge } from "@/components/badge";
 import { ConfirmDeleteForm } from "@/components/confirm-delete-form";
 import { fundingTypeLabels, stageLabels } from "@/lib/labels";
-import { isLegacyPrivateDemoProjectId } from "@/lib/public-demo";
-import { getStorage } from "@/lib/storage";
+import { getProjectForCurrentUser } from "@/lib/projects";
+import {
+  isLegacyPrivateDemoProjectId,
+  isPublicDemoProjectId,
+} from "@/lib/public-demo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +23,13 @@ export default async function ProjectDetailPage({
     notFound();
   }
 
-  const project = await getStorage().getProject(id);
+  const { project, user } = await getProjectForCurrentUser(id);
 
   if (!project) {
     notFound();
   }
+
+  const isPublicDemo = isPublicDemoProjectId(project.id);
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-10">
@@ -44,23 +49,27 @@ export default async function ProjectDetailPage({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Link
-            href={`/projects/${project.id}/edit`}
-            className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Edit
-          </Link>
+          {!isPublicDemo && user ? (
+            <Link
+              href={`/projects/${project.id}/edit`}
+              className="inline-flex justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Edit
+            </Link>
+          ) : null}
           <Link
             href={`/projects/${project.id}/scan`}
             className="primary-action inline-flex justify-center rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
           >
             Scan EU Funding
           </Link>
-          <ConfirmDeleteForm
-            action={deleteProjectAction.bind(null, project.id)}
-            label="Delete"
-            message={`Delete project "${project.name}"? This cannot be undone.`}
-          />
+          {!isPublicDemo && user ? (
+            <ConfirmDeleteForm
+              action={deleteProjectAction.bind(null, project.id)}
+              label="Delete"
+              message={`Delete project "${project.name}"? This cannot be undone.`}
+            />
+          ) : null}
         </div>
       </div>
 

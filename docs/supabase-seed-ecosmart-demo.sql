@@ -19,7 +19,8 @@ insert into public.projects (
   avoid,
   scoring_weights,
   created_at,
-  updated_at
+  updated_at,
+  user_id
 )
 values (
   'ecosmart-demo',
@@ -38,7 +39,8 @@ values (
   '["defence-only calls", "pure equity"]'::jsonb,
   '{"topicFit": 4, "eligibilityFit": 3, "fundingFit": 3, "stageFit": 2, "deadlineFit": 2, "competitionRisk": 1, "strategicValue": 3}'::jsonb,
   now(),
-  now()
+  now(),
+  null
 )
 on conflict (id) do update
 set
@@ -56,4 +58,5 @@ set
   keywords = excluded.keywords,
   avoid = excluded.avoid,
   scoring_weights = excluded.scoring_weights,
+  user_id = null,
   updated_at = now();

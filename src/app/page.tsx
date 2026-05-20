@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/badge";
 import {
   getPublicDemoProjectId,
@@ -15,6 +16,14 @@ export default async function HomePage() {
     <section className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
       <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
+          <Image
+            src="/brand/fundingmatch-ai-logo.png"
+            alt="FundingMatch AI logo"
+            width={981}
+            height={541}
+            priority
+            className="mb-8 h-auto w-52 sm:w-64"
+          />
           <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
             Match startup and project profiles to EU funding calls.
           </h1>

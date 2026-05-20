@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { requireUser } from "@/lib/auth";
 import {
   defaultScoringWeights,
   fundingTypeSchema,
   type CreateProjectProfile,
 } from "@/lib/schemas";
-import { getStorage } from "@/lib/storage";
+import { getStorageForUser } from "@/lib/storage";
 import { projectProfileInputSchema } from "@/lib/storage/types";
 
 export type ProjectFormState = {
@@ -38,7 +39,8 @@ export async function createProjectAction(
     return { errors: formatZodErrors(result.error) };
   }
 
-  const project = await getStorage().createProject(result.data);
+  const user = await requireUser("/projects/new");
+  const project = await getStorageForUser(user.id).createProject(result.data);
 
   revalidatePath("/projects");
   redirect(`/projects/${project.id}`);
@@ -58,7 +60,8 @@ export async function updateProjectAction(
     return { errors: formatZodErrors(result.error) };
   }
 
-  const project = await getStorage().updateProject(id, result.data);
+  const user = await requireUser(`/projects/${id}/edit`);
+  const project = await getStorageForUser(user.id).updateProject(id, result.data);
 
   revalidatePath("/projects");
   revalidatePath(`/projects/${id}`);
@@ -66,7 +69,9 @@ export async function updateProjectAction(
 }
 
 export async function deleteProjectAction(id: string) {
-  await getStorage().deleteProject(id);
+  const user = await requireUser(`/projects/${id}`);
+
+  await getStorageForUser(user.id).deleteProject(id);
 
   revalidatePath("/projects");
   redirect("/projects");

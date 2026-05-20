@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getStorage } from "@/lib/storage";
+import type { AppStorage } from "@/lib/storage/types";
 import { fundingCallInputSchema } from "@/lib/storage/types";
 
 export type ManualFundingCallImportValidationError = {
@@ -17,6 +18,7 @@ export type ManualFundingCallImportResult = {
 
 export async function importManualFundingCallsFromJson(
   jsonText: string,
+  storage: AppStorage = getStorage(),
 ): Promise<ManualFundingCallImportResult> {
   const parsedJson = parseManualFundingCallsJson(jsonText);
 
@@ -33,7 +35,6 @@ export async function importManualFundingCallsFromJson(
     };
   }
 
-  const storage = getStorage();
   const validationErrors: ManualFundingCallImportValidationError[] = [];
   let importedCount = 0;
 

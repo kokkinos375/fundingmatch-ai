@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getStorage } from "@/lib/storage";
+import { requireUser } from "@/lib/auth";
+import { getStorageForUser } from "@/lib/storage";
 import { type FundingCallInput } from "@/lib/storage/types";
 
 export async function createManualFundingCallAction(formData: FormData) {
-  const call = await getStorage().createManualFundingCall(
+  const user = await requireUser("/funding-calls/new");
+  const call = await getStorageForUser(user.id).createManualFundingCall(
     readManualFundingCallForm(formData),
   );
 
@@ -18,7 +20,8 @@ export async function updateManualFundingCallAction(
   id: string,
   formData: FormData,
 ) {
-  const call = await getStorage().updateManualFundingCall(
+  const user = await requireUser(`/funding-calls/${id}/edit`);
+  const call = await getStorageForUser(user.id).updateManualFundingCall(
     id,
     readManualFundingCallForm(formData),
   );
@@ -29,7 +32,9 @@ export async function updateManualFundingCallAction(
 }
 
 export async function deleteManualFundingCallAction(id: string) {
-  await getStorage().deleteManualFundingCall(id);
+  const user = await requireUser(`/funding-calls/${id}`);
+
+  await getStorageForUser(user.id).deleteManualFundingCall(id);
 
   revalidatePath("/funding-calls");
   redirect("/funding-calls");

@@ -22,3 +22,7 @@ export function getPublicDemoProjectProfile() {
 export function isLegacyPrivateDemoProjectId(projectId: string) {
   return projectId === LEGACY_PRIVATE_DEMO_PROJECT_ID;
 }
+
+export function isPublicDemoProjectId(projectId: string) {
+  return projectId === getPublicDemoProjectId();
+}
