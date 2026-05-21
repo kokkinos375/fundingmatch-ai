@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge, type BadgeTone } from "@/components/badge";
+import { TopMatchesComparisonChart } from "@/components/funding-score-charts";
 import { MatchCard } from "@/components/match-card";
+import { SkeletonBlock, SkeletonCard } from "@/components/skeleton";
 import { fundingScanResultSchema, type FundingScanResult } from "@/lib/schemas";
 import {
   fundingSourceTypeLabels,
@@ -122,6 +124,18 @@ export function ScanResultsClient({
         </div>
       ) : null}
 
+      {scan.matches.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">
+            No funding matches found
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+            Add more project details, enable a funding source, or add curated
+            manual funding calls before running the scan again.
+          </p>
+        </div>
+      ) : null}
+
       {!hasEnhancedExplanations ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <p className="font-semibold">Explanation details may be limited</p>
@@ -151,6 +165,23 @@ export function ScanResultsClient({
           value={new Date(scan.generatedAt).toLocaleTimeString()}
         />
       </div>
+
+      <section className="smooth-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Top opportunities at a glance
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Final scores for the strongest ranked opportunities.
+            </p>
+          </div>
+          <Badge tone="teal">Top {Math.min(5, scan.matches.length)}</Badge>
+        </div>
+        <div className="mt-5">
+          <TopMatchesComparisonChart matches={scan.matches} />
+        </div>
+      </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -380,27 +411,39 @@ function getSavedScanId(payload: unknown) {
 }
 
 function ScanLoadingState() {
+  const stages = [
+    "Reading project profile",
+    "Comparing funding opportunities",
+    "Calculating match scores",
+    "Preparing recommendations",
+  ];
+
   return (
     <div className="mt-8 space-y-6" aria-live="polite" aria-busy="true">
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="h-4 w-44 rounded bg-slate-200" />
-        <div className="mt-3 h-3 w-full max-w-xl rounded bg-slate-100" />
-        <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
-      </div>
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="h-20 rounded bg-slate-100" />
-          <div className="h-20 rounded bg-slate-100" />
-          <div className="h-20 rounded bg-slate-100" />
+      <div className="rounded-lg border border-teal-200 bg-teal-50 p-5 text-sm leading-6 text-teal-950 shadow-sm">
+        <h2 className="text-lg font-semibold">Running funding scan</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stages.map((stage, index) => (
+            <div
+              key={stage}
+              className="rounded-md border border-teal-200 bg-white/75 p-3"
+            >
+              <span className="text-xs font-semibold text-teal-700">
+                Step {index + 1}
+              </span>
+              <p className="mt-1 font-medium">{stage}</p>
+            </div>
+          ))}
         </div>
       </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="h-5 w-56 rounded bg-slate-200" />
-        <div className="mt-5 space-y-3">
-          <div className="h-12 rounded bg-slate-100" />
-          <div className="h-12 rounded bg-slate-100" />
-          <div className="h-12 rounded bg-slate-100" />
-        </div>
+        <SkeletonBlock className="h-5 w-56" />
+        <SkeletonBlock className="mt-5 h-44 w-full" />
       </div>
     </div>
   );

@@ -217,7 +217,7 @@ export default async function HomePage() {
           <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
             <Link
               href="/auth/signup"
-              className="primary-action inline-flex justify-center rounded-md bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-teal-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200"
+              className="inline-flex justify-center rounded-md bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-teal-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200"
             >
               Create account
             </Link>

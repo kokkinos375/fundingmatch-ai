@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useActionState } from "react";
 import Link from "next/link";
+import { SkeletonBlock } from "@/components/skeleton";
 import { fundingTypeLabels, stageLabels } from "@/lib/labels";
 import {
   defaultScoringWeights,
@@ -34,6 +35,7 @@ type GuidedProjectDraft = {
   sectors: string[];
   customSectors: string;
   stage: ProjectStage;
+  trl: string;
   problemSolved: string;
   solution: string;
   keywords: string;
@@ -56,6 +58,7 @@ const initialDraft: GuidedProjectDraft = {
   sectors: [],
   customSectors: "",
   stage: "prototype",
+  trl: "",
   problemSolved: "",
   solution: "",
   keywords: "",
@@ -63,10 +66,10 @@ const initialDraft: GuidedProjectDraft = {
 };
 
 const steps = [
-  "Idea",
-  "Sector",
-  "Stage",
-  "Funding",
+  "Describe",
+  "Review",
+  "Refine",
+  "Completeness",
   "Confirm",
 ] as const;
 
@@ -104,9 +107,10 @@ export function GuidedProjectCreationFlow({
   const currentStep = steps[stepIndex];
   const canContinue = getCanContinue(currentStep, draft);
   const generatedProfile = useMemo(() => buildProfileFields(draft), [draft]);
+  const completeness = useMemo(() => getProfileCompleteness(draft), [draft]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.28fr_0.72fr]">
+    <div className="grid gap-6 xl:grid-cols-[0.24fr_0.5fr_0.26fr]">
       <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
           Guided setup
@@ -154,7 +158,34 @@ export function GuidedProjectCreationFlow({
         </div>
       </aside>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200">
+        <div className="mb-5">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+            <span>
+              Step {stepIndex + 1} of {steps.length}
+            </span>
+            <span>{completeness.percent}% complete</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-teal-600 transition-all duration-300"
+              style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <details className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4 xl:hidden">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-950">
+            Live profile preview
+          </summary>
+          <div className="mt-4">
+            <ProfilePreviewCard
+              generatedProfile={generatedProfile}
+              completeness={completeness}
+            />
+          </div>
+        </details>
+
         {state.errors.length > 0 ? (
           <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-950">
             <p className="font-semibold">Fix these validation errors</p>
@@ -167,7 +198,7 @@ export function GuidedProjectCreationFlow({
         ) : null}
 
         <div className="min-h-[430px]">
-          {currentStep === "Idea" ? (
+          {currentStep === "Describe" ? (
             <IdeaStep
               draft={draft}
               extractState={extractState}
@@ -175,14 +206,18 @@ export function GuidedProjectCreationFlow({
               setDraft={setDraft}
             />
           ) : null}
-          {currentStep === "Sector" ? (
-            <SectorStep draft={draft} setDraft={setDraft} />
+          {currentStep === "Review" ? (
+            <ReviewProfileStep draft={draft} setDraft={setDraft} />
           ) : null}
-          {currentStep === "Stage" ? (
-            <StageStep draft={draft} setDraft={setDraft} />
+          {currentStep === "Refine" ? (
+            <RefineStep draft={draft} setDraft={setDraft} />
           ) : null}
-          {currentStep === "Funding" ? (
-            <FundingStep draft={draft} setDraft={setDraft} />
+          {currentStep === "Completeness" ? (
+            <CompletenessStep
+              completeness={completeness}
+              generatedProfile={generatedProfile}
+              setStepIndex={setStepIndex}
+            />
           ) : null}
           {currentStep === "Confirm" ? (
             <form action={formAction} className="space-y-6">
@@ -235,6 +270,15 @@ export function GuidedProjectCreationFlow({
           </div>
         ) : null}
       </section>
+
+      <aside className="hidden xl:block">
+        <div className="sticky top-6">
+          <ProfilePreviewCard
+            generatedProfile={generatedProfile}
+            completeness={completeness}
+          />
+        </div>
+      </aside>
     </div>
   );
 
@@ -277,7 +321,7 @@ export function GuidedProjectCreationFlow({
       }
 
       setDraft(applySuggestionToDraft(draft, suggestion.data));
-      setStepIndex(steps.length - 1);
+      setStepIndex(1);
       setExtractState({
         status: "success",
         message:
@@ -380,6 +424,13 @@ function IdeaStep({
               {extractState.message}
             </p>
           ) : null}
+          {extractState.status === "loading" ? (
+            <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+              <SkeletonBlock className="h-3 w-40" />
+              <SkeletonBlock className="mt-2 h-3 w-full" />
+              <SkeletonBlock className="mt-2 h-3 w-2/3" />
+            </div>
+          ) : null}
         </label>
         <label className={labelClass}>
           Target users
@@ -406,6 +457,213 @@ function IdeaStep({
           />
           <span className={helpClass}>Use commas or short phrases.</span>
         </label>
+      </div>
+    </div>
+  );
+}
+
+function ReviewProfileStep({
+  draft,
+  setDraft,
+}: {
+  draft: GuidedProjectDraft;
+  setDraft: (draft: GuidedProjectDraft) => void;
+}) {
+  const generatedProfile = buildProfileFields(draft);
+
+  return (
+    <div className="animate-[fadeIn_180ms_ease-out]">
+      <StepHeading
+        title="Review generated profile"
+        description="Check the core story before refining sectors, technologies, and funding preferences."
+      />
+      <div className="mt-6 grid gap-5">
+        <label className={labelClass}>
+          Project name
+          <input
+            value={generatedProfile.name}
+            onChange={(event) =>
+              setDraft({ ...draft, name: event.target.value })
+            }
+            placeholder="Project name"
+            className={textInputClass}
+          />
+        </label>
+        <EditableField
+          label="Short description"
+          value={generatedProfile.shortDescription}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, shortDescription: value })}
+        />
+        <EditableField
+          label="Problem solved"
+          value={generatedProfile.problemSolved}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, problemSolved: value })}
+        />
+        <EditableField
+          label="Solution"
+          value={generatedProfile.solution}
+          rows={3}
+          onChange={(value) => setDraft({ ...draft, solution: value })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RefineStep({
+  draft,
+  setDraft,
+}: {
+  draft: GuidedProjectDraft;
+  setDraft: (draft: GuidedProjectDraft) => void;
+}) {
+  return (
+    <div className="animate-[fadeIn_180ms_ease-out]">
+      <StepHeading
+        title="Refine funding profile"
+        description="These details improve matching quality and make saved project profiles easier to scan later."
+      />
+      <div className="mt-6 grid gap-5 md:grid-cols-2">
+        <label className={labelClass}>
+          Target country
+          <input
+            value={draft.country}
+            onChange={(event) =>
+              setDraft({ ...draft, country: event.target.value })
+            }
+            placeholder="e.g. Greece"
+            className={textInputClass}
+          />
+          <span className={helpClass}>
+            Add target country to improve eligibility matching.
+          </span>
+        </label>
+        <label className={labelClass}>
+          TRL
+          <select
+            value={draft.trl}
+            onChange={(event) =>
+              setDraft({ ...draft, trl: event.target.value })
+            }
+            className={textInputClass}
+          >
+            <option value="">Not sure yet</option>
+            {Array.from({ length: 9 }, (_, index) => index + 1).map((trl) => (
+              <option key={trl} value={trl}>
+                TRL {trl}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={labelClass}>
+          Target users
+          <textarea
+            value={draft.targetUsers}
+            onChange={(event) =>
+              setDraft({ ...draft, targetUsers: event.target.value })
+            }
+            rows={3}
+            placeholder="Who will use, buy, or benefit from this?"
+            className={textInputClass}
+          />
+        </label>
+        <label className={labelClass}>
+          Technologies
+          <textarea
+            value={draft.technologies}
+            onChange={(event) =>
+              setDraft({ ...draft, technologies: event.target.value })
+            }
+            rows={3}
+            placeholder="AI, sensors, data analytics..."
+            className={textInputClass}
+          />
+          <span className={helpClass}>
+            Add technologies to improve call matching.
+          </span>
+        </label>
+        <label className={`${labelClass} md:col-span-2`}>
+          Keywords
+          <textarea
+            value={draft.keywords}
+            onChange={(event) =>
+              setDraft({ ...draft, keywords: event.target.value })
+            }
+            rows={2}
+            placeholder="sustainability, AI, sensors, climate..."
+            className={textInputClass}
+          />
+        </label>
+      </div>
+      <div className="mt-8 space-y-8">
+        <SectorStep draft={draft} setDraft={setDraft} />
+        <StageStep draft={draft} setDraft={setDraft} />
+        <FundingStep draft={draft} setDraft={setDraft} />
+      </div>
+    </div>
+  );
+}
+
+function CompletenessStep({
+  completeness,
+  generatedProfile,
+  setStepIndex,
+}: {
+  completeness: ProfileCompleteness;
+  generatedProfile: ReturnType<typeof buildProfileFields>;
+  setStepIndex: (index: number) => void;
+}) {
+  return (
+    <div className="animate-[fadeIn_180ms_ease-out]">
+      <StepHeading
+        title="Profile completeness preview"
+        description="Review missing inputs before saving. You can still save a draft and refine it later."
+      />
+      <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-950">
+              Completeness
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              {generatedProfile.name || "Untitled project"}
+            </p>
+          </div>
+          <span className="text-3xl font-semibold text-slate-950">
+            {completeness.percent}%
+          </span>
+        </div>
+        <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-200">
+          <div
+            className="h-full rounded-full bg-teal-600 transition-all duration-300"
+            style={{ width: `${completeness.percent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <CompletenessList
+          title="Missing fields"
+          items={completeness.missing}
+          emptyText="All core fields are covered."
+        />
+        <CompletenessList
+          title="Suggestions"
+          items={completeness.suggestions}
+          emptyText="This profile is ready for a first scan."
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setStepIndex(2)}
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Refine profile
+        </button>
       </div>
     </div>
   );
@@ -660,7 +918,7 @@ function HiddenProjectFields({
       />
       <input type="hidden" name="solution" value={generatedProfile.solution} />
       <input type="hidden" name="stage" value={generatedProfile.stage} />
-      <input type="hidden" name="trl" value="" />
+      <input type="hidden" name="trl" value={generatedProfile.trl ?? ""} />
       {generatedProfile.preferredFundingTypes.map((type) => {
         return (
           <input
@@ -715,6 +973,78 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
       <p className="mt-2 text-sm leading-6 text-slate-950">
         {value || "Not provided"}
       </p>
+    </div>
+  );
+}
+
+type ProfileCompleteness = {
+  percent: number;
+  missing: string[];
+  suggestions: string[];
+};
+
+function ProfilePreviewCard({
+  generatedProfile,
+  completeness,
+}: {
+  generatedProfile: ReturnType<typeof buildProfileFields>;
+  completeness: ProfileCompleteness;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+        Live profile
+      </p>
+      <h3 className="mt-3 break-words text-lg font-semibold text-slate-950">
+        {generatedProfile.name || "Untitled project"}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        {generatedProfile.shortDescription || "Add a short project description."}
+      </p>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-teal-600 transition-all duration-300"
+          style={{ width: `${completeness.percent}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs font-semibold text-slate-500">
+        {completeness.percent}% complete
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {generatedProfile.sectors.slice(0, 4).map((sector) => (
+          <span
+            key={sector}
+            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600"
+          >
+            {sector}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompletenessList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: string[];
+  emptyText: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-950">{title}</h3>
+      {items.length > 0 ? (
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-slate-600">{emptyText}</p>
+      )}
     </div>
   );
 }
@@ -774,6 +1104,7 @@ function buildProfileFields(draft: GuidedProjectDraft) {
     problemSolved,
     solution,
     stage: draft.stage,
+    trl: draft.trl ? Number(draft.trl) : undefined,
     preferredFundingTypes: draft.preferredFundingTypes,
     keywords:
       keywords.length > 0
@@ -783,6 +1114,43 @@ function buildProfileFields(draft: GuidedProjectDraft) {
             ...fallbackTechnologies,
             ...draft.preferredFundingTypes,
           ]),
+  };
+}
+
+function getProfileCompleteness(draft: GuidedProjectDraft): ProfileCompleteness {
+  const checks = [
+    { label: "Project name", ok: draft.name.trim().length >= 2 },
+    { label: "Project description", ok: draft.ideaDescription.trim().length >= 10 },
+    { label: "Target country", ok: draft.country.trim().length >= 2 },
+    {
+      label: "Sectors",
+      ok: draft.sectors.length > 0 || draft.customSectors.trim().length > 0,
+    },
+    { label: "Technologies", ok: parseList(draft.technologies).length > 0 },
+    { label: "Target users", ok: draft.targetUsers.trim().length >= 2 },
+    { label: "Problem solved", ok: buildProfileFields(draft).problemSolved.length >= 10 },
+    { label: "Solution", ok: buildProfileFields(draft).solution.length >= 10 },
+    { label: "Funding preferences", ok: draft.preferredFundingTypes.length > 0 },
+    { label: "Keywords", ok: parseList(draft.keywords).length > 0 },
+  ];
+  const missing = checks.filter((check) => !check.ok).map((check) => check.label);
+  const suggestions = [
+    !draft.country.trim()
+      ? "Add target country to improve eligibility matching."
+      : null,
+    parseList(draft.technologies).length === 0
+      ? "Add technologies to improve call matching."
+      : null,
+    !draft.trl ? "Add TRL if you know it to improve stage matching." : null,
+    parseList(draft.keywords).length === 0
+      ? "Add keywords that funders would use in call text."
+      : null,
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    percent: Math.round(((checks.length - missing.length) / checks.length) * 100),
+    missing,
+    suggestions,
   };
 }
 
@@ -868,19 +1236,13 @@ function getCanContinue(
   step: (typeof steps)[number],
   draft: GuidedProjectDraft,
 ) {
-  if (step === "Idea") {
+  if (step === "Describe") {
     return (
-      draft.name.trim().length >= 2 &&
-      draft.country.trim().length >= 2 &&
       draft.ideaDescription.trim().length >= 10
     );
   }
 
-  if (step === "Sector") {
-    return draft.sectors.length > 0 || draft.customSectors.trim().length > 0;
-  }
-
-  if (step === "Funding") {
+  if (step === "Refine") {
     return draft.preferredFundingTypes.length > 0;
   }
 

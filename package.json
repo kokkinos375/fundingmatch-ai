@@ -13,9 +13,11 @@
     "@supabase/supabase-js": "^2.106.0",
     "@tailwindcss/postcss": "latest",
     "next": "latest",
+    "next-themes": "^0.4.6",
     "openai": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "recharts": "^3.8.1",
     "tailwindcss": "latest",
     "zod": "latest"
   },

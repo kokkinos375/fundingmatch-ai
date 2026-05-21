@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/auth/actions";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
@@ -21,10 +23,11 @@ export default async function RootLayout({
   const user = await getCurrentUser();
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <header className="border-b border-slate-200/80 bg-white/86 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <ThemeProvider>
+        <header className="border-b border-slate-200/80 bg-white/86 backdrop-blur transition-colors dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
             <Link href="/" className="flex items-center gap-3 font-semibold">
               <Image
                 src="/brand/fundingmatch-ai-logo.png"
@@ -35,7 +38,7 @@ export default async function RootLayout({
                 className="h-auto w-32 sm:w-40"
               />
             </Link>
-            <nav className="grid w-full grid-cols-2 gap-2 text-sm text-slate-600 sm:flex sm:w-auto sm:items-center sm:justify-end">
+            <nav className="grid w-full grid-cols-2 gap-2 text-sm text-slate-600 sm:grid-cols-3 lg:flex lg:w-auto lg:items-center lg:justify-end dark:text-slate-300">
               {user ? (
                 <>
                   <Link
@@ -76,6 +79,7 @@ export default async function RootLayout({
                       Logout
                     </button>
                   </form>
+                  <ThemeToggle />
                 </>
               ) : (
                 <>
@@ -97,12 +101,14 @@ export default async function RootLayout({
                   >
                     Sign up
                   </Link>
+                  <ThemeToggle />
                 </>
               )}
             </nav>
           </div>
         </header>
         <main>{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );

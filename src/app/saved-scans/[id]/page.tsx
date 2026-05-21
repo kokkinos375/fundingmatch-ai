@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/badge";
+import { TopMatchesComparisonChart } from "@/components/funding-score-charts";
 import { MatchCard } from "@/components/match-card";
 import { requireUser } from "@/lib/auth";
 import { getStorageForUser } from "@/lib/storage";
@@ -46,6 +47,23 @@ export default async function SavedScanDetailPage({
           <Badge>{scan.result.matches.length} matches</Badge>
         </div>
       </div>
+
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Saved score comparison
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Top final scores captured in this saved scan.
+            </p>
+          </div>
+          <Badge tone="teal">Top {Math.min(5, scan.result.matches.length)}</Badge>
+        </div>
+        <div className="mt-5">
+          <TopMatchesComparisonChart matches={scan.result.matches} />
+        </div>
+      </section>
 
       <div className="mt-8 space-y-5">
         {scan.result.matches.map((match, index) => {

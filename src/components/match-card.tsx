@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Badge, type BadgeTone } from "@/components/badge";
+import { ScoreBreakdownChart } from "@/components/funding-score-charts";
 import { ScoreBar } from "@/components/score-bar";
 import {
   fundingSourceTypeLabels,
@@ -17,9 +18,17 @@ export function MatchCard({
   rank: number;
 }) {
   const officialCallUrl = getOfficialCallUrl(match.call);
+  const hasOfficialLink = Boolean(officialCallUrl);
+  const hasDeadline = Boolean(match.call.deadline?.trim());
+  const riskTone =
+    match.scores.competitionRisk >= 70
+      ? "red"
+      : match.scores.competitionRisk >= 45
+        ? "amber"
+        : "green";
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="smooth-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -36,6 +45,17 @@ export function MatchCard({
                 {fundingSourceTypeLabels[match.call.sourceType]}
               </Badge>
             ) : null}
+            <Badge tone={riskTone}>
+              {match.scores.competitionRisk >= 70
+                ? "Higher competition risk"
+                : "Manageable risk"}
+            </Badge>
+            <Badge tone={hasDeadline ? "green" : "amber"}>
+              {hasDeadline ? "Deadline listed" : "Deadline missing"}
+            </Badge>
+            <Badge tone={hasOfficialLink ? "green" : "amber"}>
+              {hasOfficialLink ? "Official link" : "No official link"}
+            </Badge>
           </div>
           <h2 className="mt-3 break-words text-xl font-semibold tracking-tight text-slate-950">
             {match.call.title}
@@ -85,6 +105,9 @@ export function MatchCard({
           <p className="mt-1 text-4xl font-semibold tracking-tight text-slate-950">
             {match.scores.finalScore}
           </p>
+          <div className="mt-4">
+            <ScoreBreakdownChart scores={match.scores} />
+          </div>
           <div className="mt-4 space-y-3">
             <ScoreBar label="Topic fit" value={match.scores.topicFit} />
             <ScoreBar
