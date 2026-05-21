@@ -66,6 +66,19 @@ export const httpUrlSchema = z
     }
   }, "Must be a valid http or https URL.");
 
+const emptyStringToUndefined = (value: unknown) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+
+  return value;
+};
+
+export const optionalHttpUrlSchema = z.preprocess(
+  emptyStringToUndefined,
+  httpUrlSchema.optional(),
+);
+
 export const projectProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(2),
@@ -92,7 +105,7 @@ export const createProjectProfileSchema = projectProfileSchema.omit({
   updatedAt: true,
 });
 
-export const fundingCallSchema = z.object({
+export const fundingCallBaseSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(2),
   programme: z.string().min(2),
@@ -100,14 +113,29 @@ export const fundingCallSchema = z.object({
   status: z.string().min(1),
   deadline: z.string().min(1),
   budget: z.string().min(1),
-  url: httpUrlSchema,
+  url: optionalHttpUrlSchema,
   description: z.string().min(10),
   eligibility: z.string().min(10),
   sourceName: z.string().min(1).optional(),
   sourceType: fundingSourceTypeSchema.optional(),
-  sourceUrl: httpUrlSchema.optional(),
+  sourceUrl: optionalHttpUrlSchema,
   retrievedAt: z.string().datetime().optional(),
 });
+
+export const fundingCallSchema = fundingCallBaseSchema
+  .superRefine((call, ctx) => {
+    if (call.sourceType === "mock") {
+      return;
+    }
+
+    if (!call.url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "Please provide the exact official call or application URL.",
+      });
+    }
+  });
 
 const boundedScoreSchema = z.number().min(0).max(100);
 

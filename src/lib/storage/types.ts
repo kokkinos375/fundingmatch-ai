@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   createProjectProfileSchema,
   httpUrlSchema,
+  optionalHttpUrlSchema,
   type CreateProjectProfile,
   type FundingCall,
   type FundingScanResult,
@@ -19,6 +20,14 @@ const emptyStringToUndefined = (value: unknown) => {
   return value;
 };
 
+const officialCallUrlRequiredMessage =
+  "Please provide the exact official call or application URL.";
+
+const requiredOfficialCallUrlSchema = z.preprocess(
+  (value) => (typeof value === "string" ? value : ""),
+  z.string().trim().min(1, officialCallUrlRequiredMessage).pipe(httpUrlSchema),
+);
+
 export const projectProfileInputSchema = createProjectProfileSchema;
 
 export const fundingCallInputSchema = z.object({
@@ -28,16 +37,13 @@ export const fundingCallInputSchema = z.object({
   status: z.string().trim().min(1),
   deadline: z.string().trim().min(1),
   budget: z.string().trim().min(1),
-  url: httpUrlSchema,
+  url: requiredOfficialCallUrlSchema,
   description: z.string().trim().min(10),
   eligibility: z.string().trim().min(10),
   sourceName: z
     .preprocess(emptyStringToUndefined, z.string().trim().min(1).optional())
     .default(MANUAL_FUNDING_SOURCE_NAME),
-  sourceUrl: z.preprocess(
-    emptyStringToUndefined,
-    httpUrlSchema.optional(),
-  ),
+  sourceUrl: optionalHttpUrlSchema,
 });
 
 export type ProjectProfileInput = CreateProjectProfile;

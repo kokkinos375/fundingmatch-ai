@@ -168,7 +168,11 @@ function buildDedupeKey(call: FundingCall) {
   return `title:${title}`;
 }
 
-function normalizeKey(value: string) {
+function normalizeKey(value: string | undefined) {
+  if (!value) {
+    return "";
+  }
+
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 

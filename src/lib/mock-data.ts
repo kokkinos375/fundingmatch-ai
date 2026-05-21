@@ -58,7 +58,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-10-07",
     budget: "EUR 6 million total, grants up to EUR 2 million",
-    url: "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/home",
     description:
       "Mock Horizon Europe topic supporting AI, data sharing, sensing, and decision-support tools for climate-resilient ocean, coastal, port, and blue-economy operations. Strong fit for consortia validating digital technologies through pilots at TRL 5-7.",
     eligibility:
@@ -72,7 +71,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-09-02",
     budget: "Grant up to EUR 2.5 million and optional equity investment",
-    url: "https://eic.ec.europa.eu/eic-funding-opportunities/eic-accelerator_en",
     description:
       "Mock EIC Accelerator call for startups and SMEs with breakthrough deep tech, high-risk innovation, strong commercial ambition, and credible scale-up plans. Suitable for AI, hardware, sensors, climate, energy, health, mobility, and industrial technologies.",
     eligibility:
@@ -86,7 +84,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-09-23",
     budget: "Co-financed grants, typical projects EUR 1-4 million",
-    url: "https://cinea.ec.europa.eu/programmes/life_en",
     description:
       "Mock LIFE call for field pilots that protect biodiversity, reduce pressure on protected species, and deploy practical monitoring or mitigation methods. Digital and AI tools are eligible when they support measurable conservation outcomes.",
     eligibility:
@@ -100,7 +97,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-09-10",
     budget: "National grant rates vary by country",
-    url: "https://www.eurekanetwork.org/programmes/eurostars/",
     description:
       "Mock Eurostars call for international R&D projects led by innovative SMEs. Supports market-oriented prototypes, pilots, and validation with partners across Europe in AI, digital, climate, industrial, agriculture, health, and mobility sectors.",
     eligibility:
@@ -114,7 +110,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-07-31",
     budget: "Accelerator services plus pilot vouchers up to EUR 60,000",
-    url: "https://www.eiturbanmobility.eu/get-involved/calls/",
     description:
       "Mock accelerator for startups improving urban mobility, logistics, ports, emissions reduction, safety, infrastructure planning, and operational decision support. Emphasis on pilots with cities, port authorities, or mobility operators.",
     eligibility:
@@ -128,7 +123,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Open",
     deadline: "2026-08-30",
     budget: "Vouchers up to EUR 100,000 for testing services",
-    url: "https://digital-strategy.ec.europa.eu/en/activities/digital-programme",
     description:
       "Mock Digital Europe cascade-funding scheme for SMEs using AI testing facilities, model validation, compliance checks, datasets, cyber-resilience reviews, and experimentation support before market deployment.",
     eligibility:
@@ -142,7 +136,6 @@ export const mockFundingCalls: FundingCall[] = [
     status: "Draft",
     deadline: "2026-11-15",
     budget: "Procurement contracts, phased awards up to EUR 500,000",
-    url: "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/home",
     description:
       "Mock pre-commercial procurement for public buyers seeking solutions for resilient infrastructure, safety monitoring, environmental compliance, and operational decision support. Suppliers compete through feasibility, prototype, and pilot phases.",
     eligibility:

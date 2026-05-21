@@ -4,6 +4,7 @@ import { deleteManualFundingCallAction } from "@/app/funding-calls/actions";
 import { Badge } from "@/components/badge";
 import { ConfirmDeleteForm } from "@/components/confirm-delete-form";
 import { requireUser } from "@/lib/auth";
+import { getFundingCallLinkInfo } from "@/lib/funding-call-links";
 import { fundingSourceTypeLabels } from "@/lib/labels";
 import { getStorageForUser } from "@/lib/storage";
 
@@ -23,6 +24,7 @@ export default async function FundingCallDetailPage({
   }
 
   const deleteAction = deleteManualFundingCallAction.bind(null, call.id);
+  const linkInfo = getFundingCallLinkInfo(call);
 
   return (
     <section className="mx-auto max-w-6xl px-5 py-10">
@@ -100,23 +102,34 @@ export default async function FundingCallDetailPage({
               Links
             </h2>
             <div className="mt-4 space-y-3">
-              <a
-                href={call.url}
-                target="_blank"
-                rel="noreferrer"
-                className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-teal-700 hover:text-teal-900"
-              >
-                Open call URL
-              </a>
+              {linkInfo.href && linkInfo.buttonLabel ? (
+                <a
+                  href={linkInfo.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 dark:bg-teal-300 dark:text-slate-950 dark:hover:bg-teal-200"
+                >
+                  {linkInfo.buttonLabel}
+                </a>
+              ) : (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                  {linkInfo.fallbackLabel}
+                </p>
+              )}
               {call.sourceUrl ? (
                 <a
                   href={call.sourceUrl}
                   target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-teal-700 hover:text-teal-900"
+                  rel="noopener noreferrer"
+                  className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-teal-700 transition hover:text-teal-900 dark:border-slate-700 dark:bg-slate-900 dark:text-teal-200 dark:hover:text-teal-100"
                 >
                   Open source URL
                 </a>
+              ) : null}
+              {linkInfo.shouldWarnBeforeApplying ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                  Verify this opportunity before applying.
+                </p>
               ) : null}
             </div>
           </section>

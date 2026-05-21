@@ -12,7 +12,10 @@ import {
   verdictLabels,
   verdictTone,
 } from "@/lib/labels";
-import { getOfficialCallUrl } from "@/lib/funding-call-links";
+import {
+  getFundingCallLinkInfo,
+  type FundingCallLinkQuality,
+} from "@/lib/funding-call-links";
 
 type ScanState =
   | { status: "loading" }
@@ -257,7 +260,7 @@ export function ScanResultsClient({
             </thead>
             <tbody className="divide-y divide-slate-200">
               {scan.matches.map((match, index) => {
-                const officialCallUrl = getOfficialCallUrl(match.call);
+                const linkInfo = getFundingCallLinkInfo(match.call);
 
                 return (
                   <tr key={match.call.id} className="align-top">
@@ -271,20 +274,30 @@ export function ScanResultsClient({
                       {match.call.programme}
                     </td>
                     <td className="min-w-40 px-4 py-4">
-                      {officialCallUrl ? (
-                        <a
-                          href={officialCallUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100 hover:text-teal-900"
-                        >
-                          View official call
-                        </a>
-                      ) : (
-                        <span className="text-slate-500">
-                          No official link provided
-                        </span>
-                      )}
+                      <div className="flex flex-col items-start gap-2">
+                        {linkInfo.href && linkInfo.buttonLabel ? (
+                          <a
+                            href={linkInfo.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 dark:bg-teal-300 dark:text-slate-950 dark:hover:bg-teal-200"
+                          >
+                            {linkInfo.buttonLabel}
+                          </a>
+                        ) : (
+                          <span className="font-medium text-slate-600 dark:text-slate-300">
+                            {linkInfo.fallbackLabel}
+                          </span>
+                        )}
+                        <Badge tone={linkQualityTone(linkInfo.quality)}>
+                          {linkInfo.statusLabel}
+                        </Badge>
+                        {linkInfo.shouldWarnBeforeApplying ? (
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                            Verify this opportunity before applying.
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="min-w-44 px-4 py-4 text-slate-600">
                       <div className="flex flex-col gap-2">
@@ -517,6 +530,22 @@ function sourceTone(
 
   if (sourceType === "manual") {
     return "green";
+  }
+
+  return "slate";
+}
+
+function linkQualityTone(quality: FundingCallLinkQuality): BadgeTone {
+  if (quality === "official") {
+    return "green";
+  }
+
+  if (quality === "source") {
+    return "teal";
+  }
+
+  if (quality === "missing") {
+    return "amber";
   }
 
   return "slate";

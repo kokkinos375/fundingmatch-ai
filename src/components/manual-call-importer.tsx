@@ -24,11 +24,11 @@ const samplePlaceholder = `[
     "status": "Open",
     "deadline": "",
     "budget": "",
-    "url": "https://example.com/official-call-page",
+    "url": "https://example.org/exact-official-call-page",
     "description": "",
     "eligibility": "",
     "sourceName": "Manual Funding Calls",
-    "sourceUrl": "https://example.com/official-call-page"
+    "sourceUrl": "https://example.org/exact-official-call-page"
   }
 ]`;
 
@@ -84,7 +84,8 @@ export function ManualCallImporter() {
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
             Paste a JSON array of curated funding calls. Valid rows are added;
-            invalid rows are reported and rejected.
+            invalid rows are reported and rejected. Each manual call needs an
+            exact official call/application URL.
           </p>
         </div>
         <button

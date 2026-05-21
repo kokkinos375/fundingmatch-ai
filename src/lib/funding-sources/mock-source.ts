@@ -14,8 +14,6 @@ export class MockFundingSource implements FundingSource {
         ...call,
         sourceName: this.name,
         sourceType: this.type,
-        sourceUrl:
-          "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/home",
         retrievedAt,
       };
     });

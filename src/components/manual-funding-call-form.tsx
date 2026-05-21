@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OfficialCallUrlInput } from "@/components/official-call-url-input";
 import {
   MANUAL_FUNDING_SOURCE_NAME,
   type FundingCallInput,
@@ -67,10 +68,7 @@ export function ManualFundingCallForm({
           />
           <label className={`${labelClass} md:col-span-2`}>
             Official call/application URL
-            <input
-              name="url"
-              type="url"
-              required
+            <OfficialCallUrlInput
               defaultValue={defaults.url}
               className={textInputClass}
             />

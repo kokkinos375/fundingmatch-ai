@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getPublicDemoProjectProfile } from "@/lib/public-demo";
 import {
-  fundingCallSchema,
+  fundingCallBaseSchema,
   projectProfileSchema,
   type FundingCall,
   type ProjectProfile,
@@ -9,9 +9,18 @@ import {
 } from "@/lib/schemas";
 import { getAdminStorage, getStorageDiagnostics } from "@/lib/storage";
 
-const manualFundingCallPortableSchema = fundingCallSchema
+const manualFundingCallPortableSchema = fundingCallBaseSchema
   .extend({
     sourceType: z.literal("manual").optional(),
+  })
+  .superRefine((call, ctx) => {
+    if (!call.url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "Please provide the exact official call or application URL.",
+      });
+    }
   })
   .transform((call) => {
     return {

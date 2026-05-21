@@ -7,7 +7,10 @@ import {
   verdictLabels,
   verdictTone,
 } from "@/lib/labels";
-import { getOfficialCallUrl } from "@/lib/funding-call-links";
+import {
+  getFundingCallLinkInfo,
+  type FundingCallLinkQuality,
+} from "@/lib/funding-call-links";
 import type { FundingMatch } from "@/lib/schemas";
 
 export function MatchCard({
@@ -17,8 +20,7 @@ export function MatchCard({
   match: FundingMatch;
   rank: number;
 }) {
-  const officialCallUrl = getOfficialCallUrl(match.call);
-  const hasOfficialLink = Boolean(officialCallUrl);
+  const linkInfo = getFundingCallLinkInfo(match.call);
   const hasDeadline = Boolean(match.call.deadline?.trim());
   const riskTone =
     match.scores.competitionRisk >= 70
@@ -53,8 +55,8 @@ export function MatchCard({
             <Badge tone={hasDeadline ? "green" : "amber"}>
               {hasDeadline ? "Deadline listed" : "Deadline missing"}
             </Badge>
-            <Badge tone={hasOfficialLink ? "green" : "amber"}>
-              {hasOfficialLink ? "Official link" : "No official link"}
+            <Badge tone={linkQualityTone(linkInfo.quality)}>
+              {linkInfo.statusLabel}
             </Badge>
           </div>
           <h2 className="mt-3 break-words text-xl font-semibold tracking-tight text-slate-950">
@@ -147,20 +149,25 @@ export function MatchCard({
         </ExpandableSection>
       </div>
 
-      {officialCallUrl ? (
+      {linkInfo.href && linkInfo.buttonLabel ? (
         <a
-          href={officialCallUrl}
+          href={linkInfo.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-100 hover:text-teal-900"
+          className="mt-4 inline-flex rounded-md bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 dark:bg-teal-300 dark:text-slate-950 dark:hover:bg-teal-200"
         >
-          View official call
+          {linkInfo.buttonLabel}
         </a>
       ) : (
-        <p className="mt-4 text-sm font-medium text-slate-500">
-          No official link provided
+        <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+          {linkInfo.fallbackLabel}
         </p>
       )}
+      {linkInfo.shouldWarnBeforeApplying ? (
+        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          Verify this opportunity before applying.
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -223,6 +230,22 @@ function sourceTone(sourceType: FundingMatch["call"]["sourceType"]): BadgeTone {
 
   if (sourceType === "manual") {
     return "green";
+  }
+
+  return "slate";
+}
+
+function linkQualityTone(quality: FundingCallLinkQuality): BadgeTone {
+  if (quality === "official") {
+    return "green";
+  }
+
+  if (quality === "source") {
+    return "teal";
+  }
+
+  if (quality === "missing") {
+    return "amber";
   }
 
   return "slate";
