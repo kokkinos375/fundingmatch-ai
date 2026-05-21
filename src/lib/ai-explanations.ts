@@ -1,4 +1,8 @@
-import { getOpenAIClient, getOpenAIModel } from "@/lib/openai";
+import {
+  generateStructuredJson,
+  type AIProvider,
+  type AIProviderErrorCode,
+} from "@/lib/ai-provider";
 import {
   fundingMatchExplanationSchema,
   type FundingCall,
@@ -10,8 +14,10 @@ import {
 
 export type FundingMatchExplanationResult = {
   explanation: FundingMatchExplanation;
+  usedAI: boolean;
   usedOpenAI: boolean;
-  unavailableReason?: string;
+  provider?: AIProvider;
+  unavailableReason?: AIProviderErrorCode | "ai_skipped";
 };
 
 const explanationJsonSchema = {
@@ -45,9 +51,9 @@ export async function explainFundingMatch(
   call: FundingCall,
   scores: FundingMatchScores,
   verdict: Verdict,
-  options: { skipOpenAI?: boolean } = {},
+  options: { skipAI?: boolean } = {},
 ): Promise<FundingMatchExplanationResult> {
-  if (options.skipOpenAI) {
+  if (options.skipAI) {
     return {
       explanation: buildFallbackFundingMatchExplanation(
         project,
@@ -55,14 +61,42 @@ export async function explainFundingMatch(
         scores,
         verdict,
       ),
+      usedAI: false,
       usedOpenAI: false,
-      unavailableReason: "openai_skipped",
+      unavailableReason: "ai_skipped",
     };
   }
 
-  const client = getOpenAIClient();
+  const result = await generateStructuredJson({
+    purpose: "funding_match_explanation",
+    systemPrompt:
+      "You explain EU funding matches for startup and project profiles. The scoring has already been calculated by software and is the source of truth. Do not invent or change scores, eligibility facts, deadlines, budgets, URLs, programme names, or the verdict. Return concise practical JSON only.",
+    userPrompt: JSON.stringify({
+      project: {
+        name: project.name,
+        country: project.country,
+        sectors: project.sectors,
+        technologies: project.technologies,
+        stage: project.stage,
+        trl: project.trl,
+        preferredFundingTypes: project.preferredFundingTypes,
+        keywords: project.keywords,
+        avoid: project.avoid,
+        problemSolved: project.problemSolved,
+        solution: project.solution,
+      },
+      call,
+      scores,
+      verdict,
+      instruction:
+        "Explain why this call fits or does not fit, identify practical risks and missing information, and suggest one next step. Use only the project, call, scores, and verdict provided here. Do not invent deadlines, budgets, URLs, eligibility rules, programme names, or external policy facts. If a fact is missing, put it in missingInfo instead of guessing. Keep it generic and reusable for any startup/project profile.",
+    }),
+    schema: explanationJsonSchema,
+  });
 
-  if (!client) {
+  if (!result.ok) {
+    logExplanationFailure(result);
+
     return {
       explanation: buildFallbackFundingMatchExplanation(
         project,
@@ -70,65 +104,29 @@ export async function explainFundingMatch(
         scores,
         verdict,
       ),
+      usedAI: false,
       usedOpenAI: false,
-      unavailableReason: "missing_api_key",
+      provider: result.provider,
+      unavailableReason: result.errorCode,
     };
   }
 
-  try {
-    const response = await client.responses.create({
-      model: getOpenAIModel(),
-      input: [
-        {
-          role: "system",
-          content:
-            "You explain EU funding matches for startup and project profiles. The scoring has already been calculated deterministically by software. Do not invent or change scores, eligibility facts, deadlines, or the verdict. Return concise practical JSON only.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            project: {
-              name: project.name,
-              country: project.country,
-              sectors: project.sectors,
-              technologies: project.technologies,
-              stage: project.stage,
-              trl: project.trl,
-              preferredFundingTypes: project.preferredFundingTypes,
-              keywords: project.keywords,
-              avoid: project.avoid,
-              problemSolved: project.problemSolved,
-              solution: project.solution,
-            },
-            call,
-            scores,
-            verdict,
-            instruction:
-              "Explain why this call fits or does not fit, identify practical risks and missing information, and suggest one next step. Use only the project, call, scores, and verdict provided here. Do not invent deadlines, budgets, URLs, eligibility rules, programme names, or external policy facts. If a fact is missing, put it in missingInfo instead of guessing. Keep it generic and reusable for any startup/project profile.",
-          }),
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "funding_match_explanation",
-          strict: true,
-          schema: explanationJsonSchema,
-        },
+  const explanation = fundingMatchExplanationSchema.safeParse(result.data);
+
+  if (!explanation.success) {
+    logExplanationFailure({
+      ok: false,
+      provider: result.provider,
+      errorCode:
+        result.provider === "gemini"
+          ? "gemini_response_invalid"
+          : "openai_response_invalid",
+      statusCode: 502,
+      diagnostics: {
+        cause: "model_response_schema_validation_failed",
       },
     });
 
-    const content = response.output_text;
-    const parsed = JSON.parse(content);
-
-    return {
-      explanation: fundingMatchExplanationSchema.parse(parsed),
-      usedOpenAI: true,
-    };
-  } catch (error) {
-    const summary = summarizeOpenAIError(error);
-    console.error("OpenAI explanation failed", summary);
-
     return {
       explanation: buildFallbackFundingMatchExplanation(
         project,
@@ -136,30 +134,22 @@ export async function explainFundingMatch(
         scores,
         verdict,
       ),
+      usedAI: false,
       usedOpenAI: false,
-      unavailableReason: summary.code ?? summary.type ?? "openai_error",
-    };
-  }
-}
-
-function summarizeOpenAIError(error: unknown) {
-  if (error && typeof error === "object") {
-    const maybeError = error as {
-      status?: number;
-      code?: string;
-      type?: string;
-      message?: string;
-    };
-
-    return {
-      status: maybeError.status,
-      code: maybeError.code,
-      type: maybeError.type,
-      message: maybeError.message,
+      provider: result.provider,
+      unavailableReason:
+        result.provider === "gemini"
+          ? "gemini_response_invalid"
+          : "openai_response_invalid",
     };
   }
 
-  return { message: "Unknown OpenAI error" };
+  return {
+    explanation: explanation.data,
+    usedAI: true,
+    usedOpenAI: result.provider === "openai",
+    provider: result.provider,
+  };
 }
 
 export function buildFallbackFundingMatchExplanation(
@@ -201,4 +191,21 @@ export function buildFallbackFundingMatchExplanation(
         ? "Prepare a one-page fit memo and verify the official call text before drafting."
         : "Use this as a watchlist item unless the project can close the noted fit gaps.",
   };
+}
+
+function logExplanationFailure(
+  result: Extract<
+    Awaited<ReturnType<typeof generateStructuredJson>>,
+    { ok: false }
+  >,
+) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  console.warn("[funding-match-ai] AI explanation fallback", {
+    provider: result.provider,
+    errorCode: result.errorCode,
+    diagnostics: result.diagnostics,
+  });
 }

@@ -1,4 +1,5 @@
 import { explainFundingMatch } from "@/lib/ai-explanations";
+import { getConfiguredAIProvider, type AIProvider } from "@/lib/ai-provider";
 import { calculateFundingMatchScores, verdictFromScore } from "@/lib/scoring";
 import {
   fundingScanResultSchema,
@@ -29,27 +30,31 @@ export async function fundingMatchAgent(
     });
 
   const matches: FundingMatch[] = [];
+  let usedAI = false;
   let usedOpenAI = false;
-  let skipOpenAI = false;
+  let aiProvider: AIProvider | undefined;
+  let skipAI = false;
 
   for (const match of scoredMatches) {
     // AI is limited to explanatory prose. The strict schema excludes source
-    // funding-call fields, and the UI displays those fields only from mock data.
+    // funding-call fields, and deterministic scoring remains the source of truth.
     const result = await explainFundingMatch(
       project,
       match.call,
       match.scores,
       match.verdict,
-      { skipOpenAI },
+      { skipAI },
     );
 
+    usedAI = usedAI || result.usedAI;
     usedOpenAI = usedOpenAI || result.usedOpenAI;
 
-    if (
-      result.unavailableReason === "missing_api_key" ||
-      result.unavailableReason === "insufficient_quota"
-    ) {
-      skipOpenAI = true;
+    if (result.usedAI && result.provider) {
+      aiProvider = result.provider;
+    }
+
+    if (result.unavailableReason && result.unavailableReason !== "ai_skipped") {
+      skipAI = true;
     }
 
     matches.push({
@@ -62,6 +67,8 @@ export async function fundingMatchAgent(
     projectId: project.id,
     generatedAt: new Date().toISOString(),
     matches,
+    usedAI,
     usedOpenAI,
+    aiProvider: aiProvider ?? (usedAI ? getConfiguredAIProvider() : undefined),
   });
 }

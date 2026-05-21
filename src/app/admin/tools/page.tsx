@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminToolsClient } from "@/components/admin-tools-client";
 import { Badge, type BadgeTone } from "@/components/badge";
+import { getAIDiagnostics } from "@/lib/ai-provider";
 import {
   isEUPortalSourceEnabled,
   isManualSourceEnabled,
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminToolsPage() {
   const diagnostics = await getStorageDiagnostics();
+  const aiDiagnostics = getAIDiagnostics();
   const isProduction = process.env.NODE_ENV === "production";
 
   return (
@@ -47,7 +49,7 @@ export default async function AdminToolsPage() {
         ) : null}
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Metric label="Storage driver" value={diagnostics.activeDriver} />
         <Metric
           label="Projects"
@@ -58,9 +60,14 @@ export default async function AdminToolsPage() {
           value={diagnostics.manualFundingCallsLoaded ?? "Unavailable"}
         />
         <Metric
-          label="OpenAI key"
-          value={process.env.OPENAI_API_KEY ? "Present" : "Missing"}
-          tone={process.env.OPENAI_API_KEY ? "green" : "amber"}
+          label="AI provider"
+          value={aiDiagnostics.aiProvider}
+          tone="green"
+        />
+        <Metric
+          label="Gemini key"
+          value={aiDiagnostics.gemini.hasApiKey ? "Present" : "Missing"}
+          tone={aiDiagnostics.gemini.hasApiKey ? "green" : "amber"}
         />
         <Metric
           label="Supabase"
@@ -86,8 +93,12 @@ export default async function AdminToolsPage() {
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatusMetric
-            label="OpenAI key present"
-            active={Boolean(process.env.OPENAI_API_KEY)}
+            label="Gemini key present"
+            active={aiDiagnostics.gemini.hasApiKey}
+          />
+          <StatusMetric
+            label="OpenAI fallback key present"
+            active={aiDiagnostics.openAI.hasApiKey}
           />
           <StatusMetric
             label="Supabase URL present"

@@ -12,7 +12,8 @@ The MVP now includes Supabase Auth. Public visitors can view and scan the generi
 - TypeScript
 - Tailwind CSS
 - Zod validation
-- OpenAI API for match explanations and risk notes
+- Google Gemini API for project extraction, match explanations, and risk notes
+- Optional OpenAI provider support
 - Supabase Auth for email/password accounts
 - Local JSON storage abstraction for the MVP
 - Funding source abstraction for mock/manual/portal sources
@@ -31,16 +32,31 @@ started with, usually [http://localhost:3000](http://localhost:3000). The app
 also allows `127.0.0.1` as a development origin in `next.config.ts` to avoid
 local cross-origin dev-server warnings.
 
-## Optional OpenAI configuration
+## AI provider configuration
 
-The scan works without an API key by using deterministic local explanations. To enable AI explanations, set:
+Gemini is the default AI provider for project-profile extraction and match explanation fields. The scan still works without an AI key by using local fallback explanations.
 
 ```bash
+AI_PROVIDER=gemini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Gemini API keys are available through Google AI Studio. The free tier can be useful for MVP testing, but it has rate limits, so the app keeps clean fallback messages when quota or rate limits are reached.
+
+OpenAI remains available as an optional provider. When `AI_PROVIDER=gemini`,
+the app will try Gemini first and can fall back to OpenAI only if
+`OPENAI_API_KEY` is present. To use OpenAI as the primary provider instead, set:
+
+```bash
+AI_PROVIDER=openai
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 ```
 
-Scores are always calculated by local code in `src/lib/scoring.ts`. OpenAI is only asked to explain the calculated match, identify risks, list missing information, and recommend a next step.
+Scores are always calculated by local code in `src/lib/scoring.ts`. AI providers are only asked to extract editable project profile suggestions and explain the calculated match, identify risks, list missing information, and recommend a next step.
+
+Never commit `GEMINI_API_KEY`, `OPENAI_API_KEY`, or any other secret. Do not create `NEXT_PUBLIC_GEMINI_API_KEY`; any variable prefixed with `NEXT_PUBLIC_` is exposed to browser code.
 
 ## Storage architecture
 
@@ -407,7 +423,8 @@ must be added through Vercel project environment variables, not committed files.
 Required Vercel environment variables:
 
 ```bash
-OPENAI_API_KEY=
+AI_PROVIDER=gemini
+GEMINI_API_KEY=
 PUBLIC_DEMO_PROJECT_ID=ecosmart-demo
 STORAGE_DRIVER=supabase
 SUPABASE_URL=
@@ -417,6 +434,14 @@ SUPABASE_SERVICE_ROLE_KEY=
 ENABLE_MOCK_SOURCE=true
 ENABLE_MANUAL_SOURCE=true
 ENABLE_EU_PORTAL_SOURCE=false
+```
+
+Optional AI provider variables:
+
+```bash
+GEMINI_MODEL=gemini-2.5-flash
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
 Optional production admin variable:
@@ -443,11 +468,14 @@ Deployment notes:
 - Keep RLS enabled on `public.projects`, `public.manual_funding_calls`, and
   `public.saved_scans`.
 - Run `docs/supabase-auth-migration.sql` when upgrading an existing database.
+- Add `AI_PROVIDER=gemini` and `GEMINI_API_KEY` in Vercel for AI project
+  extraction and explanation fields.
 - Supabase Auth uses the public anon key; private data access remains scoped by
   server-side storage code and RLS policies.
 - `SUPABASE_SERVICE_ROLE_KEY` must be server-only.
 - Do not prefix secrets with `NEXT_PUBLIC_`; those variables are exposed to the
   browser bundle.
+- Do not add `NEXT_PUBLIC_GEMINI_API_KEY`.
 - Do not commit `.env.local` or any `.env.*.local` file.
 - Private startup ideas should be stored only after login. Public pages should
   continue to use generic demo data such as EcoSmart Demo.
@@ -474,7 +502,8 @@ Suggested Vercel flow:
 - [ ] RLS enabled on `public.manual_funding_calls`.
 - [ ] RLS enabled on `public.saved_scans`.
 - [ ] Supabase Auth email/password enabled.
-- [ ] OpenAI key configured.
+- [ ] Gemini key configured.
+- [ ] AI provider set to `gemini`.
 - [ ] Supabase URL configured.
 - [ ] Supabase anon key configured.
 - [ ] Supabase service/secret key configured.

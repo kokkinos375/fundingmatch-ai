@@ -62,6 +62,10 @@ function logExtractorFailure(
   }
 
   const labels = {
+    missing_gemini_key: "missing GEMINI_API_KEY",
+    gemini_quota_or_rate_limit: "Gemini quota or rate-limit failure",
+    gemini_invalid_key: "invalid Gemini API key",
+    gemini_response_invalid: "malformed Gemini model response",
     missing_openai_key: "missing OPENAI_API_KEY",
     openai_quota_or_rate_limit: "OpenAI quota or rate-limit failure",
     openai_invalid_key: "invalid OpenAI API key",

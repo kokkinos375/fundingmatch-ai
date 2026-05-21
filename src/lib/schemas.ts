@@ -28,6 +28,8 @@ export const verdictSchema = z.enum([
   "not_recommended",
 ]);
 
+export const aiProviderSchema = z.enum(["gemini", "openai"]);
+
 export const scoringWeightsSchema = z.object({
   topicFit: z.number().min(0).max(5),
   eligibilityFit: z.number().min(0).max(5),
@@ -140,6 +142,8 @@ export const fundingScanResultSchema = z.object({
   generatedAt: z.string().datetime(),
   matches: z.array(fundingMatchSchema),
   usedOpenAI: z.boolean(),
+  usedAI: z.boolean().optional(),
+  aiProvider: aiProviderSchema.optional(),
 });
 
 export const savedScanSchema = z.object({
@@ -154,6 +158,7 @@ export const savedScanSchema = z.object({
 export type ProjectStage = z.infer<typeof projectStageSchema>;
 export type FundingType = z.infer<typeof fundingTypeSchema>;
 export type FundingSourceType = z.infer<typeof fundingSourceTypeSchema>;
+export type AIProviderName = z.infer<typeof aiProviderSchema>;
 export type ProjectProfile = z.infer<typeof projectProfileSchema>;
 export type CreateProjectProfile = z.infer<typeof createProjectProfileSchema>;
 export type FundingCall = z.infer<typeof fundingCallSchema>;

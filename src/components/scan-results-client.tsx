@@ -104,6 +104,7 @@ export function ScanResultsClient({
   const usesManualCalls = scan.matches.some(
     (match) => match.call.sourceType === "manual",
   );
+  const hasEnhancedExplanations = scan.usedAI ?? scan.usedOpenAI;
 
   return (
     <div className="mt-8 space-y-8">
@@ -121,7 +122,7 @@ export function ScanResultsClient({
         </div>
       ) : null}
 
-      {!scan.usedOpenAI ? (
+      {!hasEnhancedExplanations ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <p className="font-semibold">Explanation details may be limited</p>
           <p className="mt-1">

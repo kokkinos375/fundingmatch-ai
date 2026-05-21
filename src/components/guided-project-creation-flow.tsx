@@ -826,12 +826,34 @@ function uniqueValues(values: string[]) {
 
 function getExtractorErrorMessage(payload: unknown) {
   if (isRecord(payload)) {
-    if (payload.errorCode === "missing_openai_key") {
+    if (
+      payload.errorCode === "missing_gemini_key" ||
+      payload.errorCode === "missing_openai_key"
+    ) {
       return "AI suggestions are not configured yet.";
     }
 
+    if (payload.errorCode === "gemini_quota_or_rate_limit") {
+      return "AI suggestions are temporarily unavailable due to Gemini API quota or rate limits.";
+    }
+
     if (payload.errorCode === "openai_quota_or_rate_limit") {
-      return "AI suggestions are temporarily unavailable due to API quota or rate limits.";
+      return "AI suggestions are temporarily unavailable due to OpenAI API quota or rate limits.";
+    }
+
+    if (payload.errorCode === "gemini_invalid_key") {
+      return "AI suggestions are unavailable because the Gemini API key is invalid.";
+    }
+
+    if (payload.errorCode === "openai_invalid_key") {
+      return "AI suggestions are unavailable because the OpenAI API key is invalid.";
+    }
+
+    if (
+      payload.errorCode === "gemini_response_invalid" ||
+      payload.errorCode === "openai_response_invalid"
+    ) {
+      return "AI suggestions returned an unexpected format. Please try again.";
     }
   }
 

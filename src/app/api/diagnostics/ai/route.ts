@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { getAIDiagnostics } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const diagnostics = getAIDiagnostics();
+
   return NextResponse.json({
-    openAI: {
-      hasApiKey: Boolean(process.env.OPENAI_API_KEY),
-    },
+    ...diagnostics,
     projectProfileExtractor: {
       routeConfigured: true,
     },
