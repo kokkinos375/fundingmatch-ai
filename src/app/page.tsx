@@ -217,13 +217,13 @@ export default async function HomePage() {
           <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
             <Link
               href="/auth/signup"
-              className="inline-flex justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-slate-100"
+              className="primary-action inline-flex justify-center rounded-md bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-teal-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200"
             >
               Create account
             </Link>
             <Link
               href={`/projects/${demoProjectId}/scan`}
-              className="inline-flex justify-center rounded-md border border-slate-600 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-900"
+              className="inline-flex justify-center rounded-md border border-slate-500 bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:border-slate-400 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
             >
               Try demo scan
             </Link>

@@ -18,7 +18,7 @@ export async function getCurrentUser(): Promise<User | null> {
   return user;
 }
 
-export async function requireUser(nextPath = "/projects") {
+export async function requireUser(nextPath = "/dashboard") {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -30,11 +30,11 @@ export async function requireUser(nextPath = "/projects") {
 
 export function sanitizeNextPath(value: FormDataEntryValue | string | null) {
   if (typeof value !== "string") {
-    return "/projects";
+    return "/dashboard";
   }
 
   if (!value.startsWith("/") || value.startsWith("//")) {
-    return "/projects";
+    return "/dashboard";
   }
 
   return value;

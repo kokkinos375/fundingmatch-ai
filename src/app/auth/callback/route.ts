@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
 function sanitizeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/projects";
+    return "/dashboard";
   }
 
   return value;

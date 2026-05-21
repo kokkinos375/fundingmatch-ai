@@ -36,20 +36,26 @@ export default async function RootLayout({
               />
             </Link>
             <nav className="grid w-full grid-cols-2 gap-2 text-sm text-slate-600 sm:flex sm:w-auto sm:items-center sm:justify-end">
-              <Link
-                href="/projects"
-                className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
-              >
-                Projects
-              </Link>
-              <Link
-                href="/funding-calls"
-                className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
-              >
-                Funding calls
-              </Link>
               {user ? (
                 <>
+                  <Link
+                    href="/dashboard"
+                    className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/projects"
+                    className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
+                  >
+                    Projects
+                  </Link>
+                  <Link
+                    href="/funding-calls"
+                    className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
+                  >
+                    Funding calls
+                  </Link>
                   <Link
                     href="/saved-scans"
                     className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
@@ -73,6 +79,12 @@ export default async function RootLayout({
                 </>
               ) : (
                 <>
+                  <Link
+                    href="/projects"
+                    className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"
+                  >
+                    Projects
+                  </Link>
                   <Link
                     href="/auth/login"
                     className="rounded-md px-3 py-2 text-center font-medium hover:bg-slate-100 hover:text-slate-950"

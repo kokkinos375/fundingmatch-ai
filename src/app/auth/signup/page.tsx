@@ -16,7 +16,7 @@ export default async function SignupPage({
   ]);
 
   if (user) {
-    redirect("/projects");
+    redirect("/dashboard");
   }
 
   return (
