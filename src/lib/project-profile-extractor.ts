@@ -6,6 +6,25 @@ import {
   type ProjectProfileExtraction,
 } from "@/lib/project-profile-extraction-schema";
 
+export type ProjectProfileExtractorErrorCode =
+  | "missing_openai_key"
+  | "openai_quota_or_rate_limit"
+  | "openai_invalid_key"
+  | "openai_response_invalid"
+  | "unknown_error";
+
+export type ProjectProfileExtractorDiagnostics = {
+  status?: number;
+  code?: string;
+  type?: string;
+  message?: string;
+  cause?: string;
+  validationIssues?: Array<{
+    path: string;
+    message: string;
+  }>;
+};
+
 export type ProjectProfileExtractionResult =
   | {
       ok: true;
@@ -13,8 +32,10 @@ export type ProjectProfileExtractionResult =
     }
   | {
       ok: false;
-      reason: "missing_api_key" | "openai_error";
+      errorCode: ProjectProfileExtractorErrorCode;
       message: string;
+      statusCode: number;
+      diagnostics?: ProjectProfileExtractorDiagnostics;
     };
 
 const extractionJsonSchema = {
@@ -86,12 +107,9 @@ export async function extractProjectProfileFromText(
   const client = getOpenAIClient();
 
   if (!client) {
-    return {
-      ok: false,
-      reason: "missing_api_key",
-      message:
-        "AI suggestions are unavailable right now. You can continue manually.",
-    };
+    return buildExtractorFailure("missing_openai_key", 503, {
+      cause: "OPENAI_API_KEY is not configured",
+    });
   }
 
   try {
@@ -122,26 +140,102 @@ export async function extractProjectProfileFromText(
       },
     });
 
-    const parsed = JSON.parse(response.output_text);
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(response.output_text);
+    } catch {
+      return buildExtractorFailure("openai_response_invalid", 502, {
+        cause: "model_response_json_parse_failed",
+      });
+    }
+
+    const suggestion = projectProfileExtractionSchema.safeParse(parsed);
+
+    if (!suggestion.success) {
+      return buildExtractorFailure("openai_response_invalid", 502, {
+        cause: "model_response_schema_validation_failed",
+        validationIssues: suggestion.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+    }
 
     return {
       ok: true,
-      suggestion: projectProfileExtractionSchema.parse(parsed),
+      suggestion: suggestion.data,
     };
   } catch (error) {
-    const summary = summarizeOpenAIError(error);
-    console.error("OpenAI project profile extraction failed", summary);
-
-    return {
-      ok: false,
-      reason: "openai_error",
-      message:
-        "AI suggestions are unavailable right now. Your draft is safe; continue manually or try again later.",
-    };
+    return classifyOpenAIError(error);
   }
 }
 
-function summarizeOpenAIError(error: unknown) {
+export function getProjectProfileExtractorSafeMessage(
+  errorCode: ProjectProfileExtractorErrorCode,
+) {
+  if (errorCode === "missing_openai_key") {
+    return "AI suggestions are not configured yet.";
+  }
+
+  if (errorCode === "openai_quota_or_rate_limit") {
+    return "AI suggestions are temporarily unavailable due to API quota or rate limits.";
+  }
+
+  return "AI suggestions are unavailable right now. Your draft is safe; continue manually or try again later.";
+}
+
+function classifyOpenAIError(error: unknown): ProjectProfileExtractionResult {
+  const summary = summarizeOpenAIError(error);
+  const searchableMessage = [
+    summary.code,
+    summary.type,
+    summary.message,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    summary.status === 429 ||
+    searchableMessage.includes("rate_limit") ||
+    searchableMessage.includes("rate limit") ||
+    searchableMessage.includes("quota") ||
+    searchableMessage.includes("insufficient_quota")
+  ) {
+    return buildExtractorFailure("openai_quota_or_rate_limit", 503, summary);
+  }
+
+  if (
+    summary.status === 401 ||
+    summary.status === 403 ||
+    searchableMessage.includes("invalid_api_key") ||
+    searchableMessage.includes("incorrect api key") ||
+    searchableMessage.includes("authentication")
+  ) {
+    return buildExtractorFailure("openai_invalid_key", 503, summary);
+  }
+
+  return buildExtractorFailure("unknown_error", 503, summary);
+}
+
+function buildExtractorFailure(
+  errorCode: ProjectProfileExtractorErrorCode,
+  statusCode: number,
+  diagnostics?: ProjectProfileExtractorDiagnostics,
+): ProjectProfileExtractionResult {
+  return {
+    ok: false,
+    errorCode,
+    message: getProjectProfileExtractorSafeMessage(errorCode),
+    statusCode,
+    diagnostics,
+  };
+}
+
+function summarizeOpenAIError(
+  error: unknown,
+): ProjectProfileExtractorDiagnostics {
   if (error && typeof error === "object") {
     const maybeError = error as {
       status?: number;
@@ -152,11 +246,22 @@ function summarizeOpenAIError(error: unknown) {
 
     return {
       status: maybeError.status,
-      code: maybeError.code,
-      type: maybeError.type,
-      message: maybeError.message,
+      code: sanitizeDiagnosticValue(maybeError.code),
+      type: sanitizeDiagnosticValue(maybeError.type),
+      message: sanitizeDiagnosticValue(maybeError.message),
     };
   }
 
   return { message: "Unknown OpenAI error" };
+}
+
+function sanitizeDiagnosticValue(value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  return value
+    .replace(/sk-[A-Za-z0-9_-]+/g, "sk-***")
+    .replace(/supabase_[A-Za-z0-9_-]+/gi, "supabase_***")
+    .slice(0, 300);
 }

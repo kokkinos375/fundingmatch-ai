@@ -272,7 +272,7 @@ export function GuidedProjectCreationFlow({
 
       if (!suggestion.success) {
         throw new Error(
-          "AI returned suggestions in an unexpected format. Continue manually.",
+          "AI suggestions are unavailable right now. Your draft is safe; continue manually or try again later.",
         );
       }
 
@@ -289,7 +289,7 @@ export function GuidedProjectCreationFlow({
         message:
           error instanceof Error
             ? error.message
-            : "AI suggestions are unavailable right now. Continue manually.",
+            : "AI suggestions are unavailable right now. Your draft is safe; continue manually or try again later.",
       });
     }
   }
@@ -825,15 +825,17 @@ function uniqueValues(values: string[]) {
 }
 
 function getExtractorErrorMessage(payload: unknown) {
-  if (
-    isRecord(payload) &&
-    typeof payload.error === "string" &&
-    payload.error.trim().length > 0
-  ) {
-    return payload.error;
+  if (isRecord(payload)) {
+    if (payload.errorCode === "missing_openai_key") {
+      return "AI suggestions are not configured yet.";
+    }
+
+    if (payload.errorCode === "openai_quota_or_rate_limit") {
+      return "AI suggestions are temporarily unavailable due to API quota or rate limits.";
+    }
   }
 
-  return "AI suggestions are unavailable right now. Continue manually.";
+  return "AI suggestions are unavailable right now. Your draft is safe; continue manually or try again later.";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
